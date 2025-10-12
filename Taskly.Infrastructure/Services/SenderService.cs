@@ -153,20 +153,22 @@ namespace Taskly.Infrastructure.Services
             {
                 if (messengerDto.Lead.Status == "New")
                 {
-                    switch (messengerDto.Lead.Platform)
+                    switch (messengerDto.Lead.Platform.ToLower())
                     {
-                        case "Facebook":
+                        case "facebook":
                             await _facebookService.DirectMessagingAsync(page, messengerDto);
                             break;
-                        case "Instagram":
+                        case "instagram":
                             await _instagramService.DirectMessagingAsync(page, messengerDto);
                             break;
-                        case "Twitter":
+                        case "twitter":
                             await _instagramService.DirectMessagingAsync(page, messengerDto);
                             break;
-                        case "Tik-Tok":
+                        case "tiktok":
                             await _tikTokService.DirectMessagingAsync(page, messengerDto);
                             break;
+                        default:
+                            throw new ArgumentException("Unsupported platform specified.");
                     }
 
                     await UpdateLead(messengerDto.Lead);

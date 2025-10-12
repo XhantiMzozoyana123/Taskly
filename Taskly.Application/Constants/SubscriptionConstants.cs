@@ -10,8 +10,8 @@ namespace Taskly.Application.Constants
     {
         public const string Type = "Subscription";
 
-        public const string Free = "Free";
         public const string Basic = "Basic";
+        public const string Pro = "Pro";
         public const string Premium = "Premium";
     }
 }

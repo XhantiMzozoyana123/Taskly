@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Taskly.Application.Interfaces;
 using Taskly.Domain.Entities;
@@ -7,6 +8,7 @@ namespace Taskly.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class SocialLoginController : ControllerBase
     {
         private readonly IEntityService<SocialLogins> _service;

@@ -63,6 +63,13 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("BasicOrAbove", policy =>
         policy.RequireAssertion(context =>
             context.User.HasClaim(SubscriptionConstants.Type, SubscriptionConstants.Basic) ||
+            context.User.HasClaim(SubscriptionConstants.Type, SubscriptionConstants.Pro) ||
+            context.User.HasClaim(SubscriptionConstants.Type, SubscriptionConstants.Premium)
+        ));
+
+    options.AddPolicy("ProOrAbove", policy =>
+        policy.RequireAssertion(context =>
+            context.User.HasClaim(SubscriptionConstants.Type, SubscriptionConstants.Pro) ||
             context.User.HasClaim(SubscriptionConstants.Type, SubscriptionConstants.Premium)
         ));
 

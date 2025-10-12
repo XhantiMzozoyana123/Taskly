@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 using Taskly.Application.Dtos;
 using Taskly.Application.Interfaces;
@@ -7,6 +8,7 @@ namespace Taskly.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ExtractController : ControllerBase
     {
         private readonly IExtractService _extractService;
@@ -18,6 +20,7 @@ namespace Taskly.Controllers
 
         // POST: api/Extract
         [HttpPost]
+        [Authorize(Policy = "BasicOrAbove")]
         public async Task<IActionResult> ExtractAsync([FromBody] SearchDto searchDto)
         {
             if (searchDto == null)
