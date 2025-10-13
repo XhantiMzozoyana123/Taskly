@@ -198,7 +198,6 @@ namespace Taskly.Infrastructure.Services
         public async Task<IPage> LoginAsync(IPage page, SearchDto searchDto)
         {
             var socialLogin = await _context.SocialLogins.FirstOrDefaultAsync(x =>
-                   x.UserId == searchDto.UserId &&
                    x.Platform == "Twitter");
 
             if (socialLogin == null)

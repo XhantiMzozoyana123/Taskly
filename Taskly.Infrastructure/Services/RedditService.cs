@@ -26,7 +26,7 @@ namespace Taskly.Infrastructure.Services
 
         public async Task SearchAsync(SearchDto searchDto)
         {
-            if (string.IsNullOrWhiteSpace(searchDto.Url))
+            if (string.IsNullOrWhiteSpace(searchDto.Keyword))
                 return;
 
             using var playwright = await Playwright.CreateAsync();
@@ -72,8 +72,6 @@ namespace Taskly.Infrastructure.Services
                         if (await userProfileLinkLocator.IsVisibleAsync())
                         {
                             var userProfileRelativeUrl = await userProfileLinkLocator.GetAttributeAsync("href");
-                            if (!string.IsNullOrWhiteSpace(userProfileRelativeUrl))
-                                userProfileUrl = new Uri(new Uri(searchDto.Url), userProfileRelativeUrl).AbsoluteUri;
                         }
 
                         // Extract comment text
@@ -83,8 +81,6 @@ namespace Taskly.Infrastructure.Services
 
                         // Extract comment permalink
                         shareUrl = await commentLocator.GetAttributeAsync("permalink");
-                        if (!string.IsNullOrWhiteSpace(shareUrl))
-                            shareUrl = new Uri(new Uri(searchDto.Url), shareUrl).AbsoluteUri;
 
                         // Extract posted datetime
                         var timeElementLocator = commentLocator.Locator("time").First;
@@ -139,20 +135,16 @@ namespace Taskly.Infrastructure.Services
         public async Task<IPage> LoginAsync(IPage page, SearchDto searchDto)
         {
             var socialLogin = await _context.SocialLogins.FirstAsync(x =>
-                   x.UserId == searchDto.UserId &&
                    x.Platform == "Reddit");
-
-            var userName = TokenEncryptor.Decrypt(socialLogin.UsernameHash);
-            var passWord = TokenEncryptor.Decrypt(socialLogin.PasswordHash);
 
             // --- START LOGIN SEQUENCE ---
             await page.GotoAsync("https://www.reddit.com/login/", new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
 
             // Fill username
-            await page.Locator("input[name='username']").FillAsync(userName);
+            await page.Locator("input[name='username']").FillAsync(socialLogin.Username);
 
             // Fill password
-            await page.Locator("input[name='password']").FillAsync(passWord);
+            await page.Locator("input[name='password']").FillAsync(socialLogin.Password);
 
             // Click login button
             await page.Locator("button.login.oidc").ClickAsync();
@@ -163,8 +155,6 @@ namespace Taskly.Infrastructure.Services
             await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
             // --- END LOGIN SEQUENCE ---
             
-            await page.GotoAsync(searchDto.Url, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
-
             return page;
         }
 
@@ -202,7 +192,6 @@ namespace Taskly.Infrastructure.Services
                 {
                     var externalLinks = new ExternalLinks
                     {
-                        UserId = lead.UserId,
                         LeadId = lead.Id,
                         Url = href,
                     };

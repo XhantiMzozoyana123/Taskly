@@ -26,7 +26,7 @@ namespace Taskly.Infrastructure.Services
 
         public async Task SearchAsync(SearchDto searchDto)
         {
-            if (string.IsNullOrWhiteSpace(searchDto.Url))
+            if (string.IsNullOrWhiteSpace(searchDto.Keyword))
             {
                 // Internal logging for invalid URL or missing Instagram login credentials.
                 return;
@@ -63,10 +63,6 @@ namespace Taskly.Infrastructure.Services
 
                         // Make post URL absolute immediately for reliable tracking
                         string? absolutePostUrl = null;
-                        if (!string.IsNullOrWhiteSpace(postUrl))
-                        {
-                            absolutePostUrl = new Uri(new Uri(searchDto.Url), postUrl).AbsoluteUri;
-                        }
 
                         // Check if this post has already been scraped
                         if (!string.IsNullOrWhiteSpace(absolutePostUrl) && scrapedPostUrls.Contains(absolutePostUrl))
@@ -141,7 +137,6 @@ namespace Taskly.Infrastructure.Services
         public async Task<IPage> LoginAsync(IPage page, SearchDto searchDto)
         {
             var socialLogin = await _context.SocialLogins.FirstOrDefaultAsync(x =>
-                   x.UserId == searchDto.UserId &&
                    x.Platform == "Instagram");
 
             if (socialLogin == null)
@@ -150,14 +145,11 @@ namespace Taskly.Infrastructure.Services
                 return page; // Return current page state, login will likely fail
             }
 
-            var userName = TokenEncryptor.Decrypt(socialLogin.UsernameHash);
-            var passWord = TokenEncryptor.Decrypt(socialLogin.PasswordHash);
-
             // --- START LOGIN SEQUENCE ---
             await page.GotoAsync("https://www.instagram.com/accounts/login/", new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
 
-            await page.Locator("input[name='username']").FillAsync(userName);
-            await page.Locator("input[name='password']").FillAsync(passWord);
+            await page.Locator("input[name='username']").FillAsync(socialLogin.Username);
+            await page.Locator("input[name='password']").FillAsync(socialLogin.Password);
 
             // Click login button. Instagram's login button can sometimes be a generic submit.
             // Using a more specific selector from your HTML: "button[type='submit']"
@@ -182,9 +174,6 @@ namespace Taskly.Infrastructure.Services
             }
             // --- END LOGIN SEQUENCE ---
 
-            // Now that we are (hopefully) logged in, navigate to the target Instagram URL
-            await page.GotoAsync(searchDto.Url, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
-
             return page;
         }
 
@@ -204,10 +193,6 @@ namespace Taskly.Infrastructure.Services
 
             // Wait for results (optional)
             await page.WaitForTimeoutAsync(2000);
-
-            // Extract the Instagram username from the URL for the entity
-            var uri = new Uri(searchDto.Url);
-            var instagramUsername = uri.Segments.LastOrDefault(s => !string.IsNullOrWhiteSpace(s) && !s.EndsWith("/"))?.TrimEnd('/');
 
             return page;
         }

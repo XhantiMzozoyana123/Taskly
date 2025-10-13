@@ -27,7 +27,7 @@ namespace Taskly.Infrastructure.Services
 
         public async Task SearchAsync(SearchDto searchDto)
         {
-            if (string.IsNullOrWhiteSpace(searchDto.Url))
+            if (string.IsNullOrWhiteSpace(searchDto.Keyword))
             {
                 // Internal logging for invalid URL or missing Facebook login credentials.
                 return;
@@ -85,11 +85,6 @@ namespace Taskly.Infrastructure.Services
                                 if (await postContentLinkLocator.IsVisibleAsync())
                                 {
                                     postPermalink = await postContentLinkLocator.GetAttributeAsync("href");
-                                    if (!string.IsNullOrWhiteSpace(postPermalink))
-                                    {
-                                        // Ensure it's an absolute URL
-                                        postPermalink = new Uri(new Uri(searchDto.Url), postPermalink).AbsoluteUri;
-                                    }
                                 }
 
                                 // Use the post permalink as the unique identifier
@@ -117,10 +112,6 @@ namespace Taskly.Infrastructure.Services
                                 if (await authorProfileLinkLocator.IsVisibleAsync())
                                 {
                                     string? relativeProfileUrl = await authorProfileLinkLocator.GetAttributeAsync("href");
-                                    if (!string.IsNullOrWhiteSpace(relativeProfileUrl))
-                                    {
-                                        authorProfileUrl = new Uri(new Uri(searchDto.Url), relativeProfileUrl).AbsoluteUri;
-                                    }
                                 }
 
                                 // --- 3. Extract Post Text ---
@@ -196,7 +187,6 @@ namespace Taskly.Infrastructure.Services
         public async Task<IPage> LoginAsync(IPage page, SearchDto searchDto)
         {
             var socialLogin = await _context.SocialLogins.FirstOrDefaultAsync(x =>
-                   x.UserId == searchDto.UserId &&
                    x.Platform == "Facebook");
 
             if (socialLogin == null)
@@ -205,8 +195,6 @@ namespace Taskly.Infrastructure.Services
                 return page;
             }
 
-            var userName = TokenEncryptor.Decrypt(socialLogin.UsernameHash);
-            var passWord = TokenEncryptor.Decrypt(socialLogin.PasswordHash);
 
             // --- START LOGIN SEQUENCE ---
             await page.GotoAsync("https://www.facebook.com/login/", new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 30000 });
@@ -214,12 +202,12 @@ namespace Taskly.Infrastructure.Services
             // Fill username
             var emailInput = page.Locator("input[name='email']");
             await emailInput.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 10000 });
-            await emailInput.FillAsync(userName);
+            await emailInput.FillAsync(socialLogin.Username);
 
             // Fill password
             var passwordInput = page.Locator("input[name='pass']");
             await passwordInput.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 10000 });
-            await passwordInput.FillAsync(passWord);
+            await passwordInput.FillAsync(socialLogin.Password);
 
             // Click login button
             await page.Locator("button[name='login']").ClickAsync();

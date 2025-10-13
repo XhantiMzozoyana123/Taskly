@@ -58,21 +58,18 @@ namespace Taskly.Infrastructure.Services
 
                 if (messengerDto.AbTestRotation == true)
                 {
-                    var emailer = _context.Leads.Where(x => x.Status == "New" &&
-                        x.UserId == messengerDto.UserId).ToList();
+                    var emailer = _context.Leads.Where(x => x.Status == "New").ToList();
 
                     await AbTestRotation(emailer, page);
                 }
                 else
                 {
                     var text = messengerDto.Text;
-                    var query = _context.Leads.Where(x => x.Status == "New" &&
-                        x.UserId == messengerDto.UserId).ToList();
+                    var query = _context.Leads.Where(x => x.Status == "New").ToList();
 
                     foreach (var item in query)
                     {
-                        var iceBreaker = await _context.Icebreakers.FirstAsync(x => x.LeadId == item.Id 
-                                && x.UserId == messengerDto.UserId);
+                        var iceBreaker = await _context.Icebreakers.FirstAsync(x => x.LeadId == item.Id);
 
                         if (iceBreaker == null)
                         {
@@ -120,8 +117,7 @@ namespace Taskly.Infrastructure.Services
                 var text = messengerDtos[r].Text;
 
 
-                var iceBreaker = await _context.Icebreakers.FirstAsync(x => x.LeadId == messengerDtos[r].Lead.Id
-                                && x.UserId == messengerDtos[r].UserId);
+                var iceBreaker = await _context.Icebreakers.FirstAsync(x => x.LeadId == messengerDtos[r].Lead.Id);
 
                 if (iceBreaker == null)
                 {
@@ -193,8 +189,7 @@ namespace Taskly.Infrastructure.Services
         {
             try
             {
-                var leads = await _context.Leads.Where(x => x.UserId == messengerDto.UserId
-                       && x.Status == "New").ToListAsync();
+                var leads = await _context.Leads.Where(x => x.Status == "New").ToListAsync();
 
                 foreach (var lead in leads)
                 {
@@ -206,7 +201,6 @@ namespace Taskly.Infrastructure.Services
 
                     var message = new Messages()
                     {
-                        UserId = messengerDto.UserId,
                         LeadId = lead.Id,
                         iceBreakerId = await _context.Icebreakers
                                     .Select(i => (int?)i.Id)

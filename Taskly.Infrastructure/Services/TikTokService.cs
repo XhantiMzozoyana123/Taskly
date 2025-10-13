@@ -109,7 +109,6 @@ namespace Taskly.Infrastructure.Services
         public async Task<IPage> LoginAsync(IPage page, SearchDto searchDto)
         {
             var socialLogin = await _context.SocialLogins.FirstOrDefaultAsync(x =>
-                               x.UserId == searchDto.UserId &&
                                x.Platform == "TikTok");
 
             if (socialLogin == null)
@@ -118,21 +117,18 @@ namespace Taskly.Infrastructure.Services
                 return page;
             }
 
-            var userName = TokenEncryptor.Decrypt(socialLogin.UsernameHash);
-            var passWord = TokenEncryptor.Decrypt(socialLogin.PasswordHash);
-
             // --- START LOGIN SEQUENCE ---
             await page.GotoAsync("https://www.tiktok.com/login/phone-or-email/email", new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 30000 });
 
             // Step 1: Enter username/email
             var usernameInput = page.Locator("input[name='username']");
             await usernameInput.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 10000 });
-            await usernameInput.FillAsync(userName);
+            await usernameInput.FillAsync(socialLogin.Username);
 
             // Step 2: Enter password
             var passwordInput = page.Locator("input[name='password']");
             await passwordInput.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 10000 });
-            await passwordInput.FillAsync(passWord);
+            await passwordInput.FillAsync(socialLogin.Password);
 
             // Step 3: Click the login button using data-e2e
             var loginButton = page.Locator("[data-e2e='login-button']");
@@ -148,7 +144,7 @@ namespace Taskly.Infrastructure.Services
 
         public async Task SearchAsync(SearchDto searchDto)
         {
-            if (string.IsNullOrWhiteSpace(searchDto.Url))
+            if (string.IsNullOrWhiteSpace(searchDto.Keyword))
                 return;
 
             using var playwright = await Playwright.CreateAsync();

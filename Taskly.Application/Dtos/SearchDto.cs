@@ -14,8 +14,6 @@ namespace Taskly.Application.Dtos
 
         public string Query { get; set; } = string.Empty; // Query to give more context
 
-        public string Url { get; set; } = string.Empty; // URL to filter results
-
         public string Platform { get; set; } = string.Empty; // Social media platform (e.g., Facebook, Instagram)
 
         public int PageNumber { get; set; } = 1; // For pagination, default to first page
