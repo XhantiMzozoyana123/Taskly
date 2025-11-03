@@ -11,5 +11,7 @@ namespace Taskly.Application.Interfaces
     public interface ICookieService
     {
         Task<(IPage page, IBrowser browser)> LoadCookieOnPageAsync(string cookiePath, bool hideBrowser);
+
+        Task<string> IdentifyCookieSiteAsync(string cookiePath);
     }
 }

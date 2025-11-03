@@ -18,6 +18,27 @@ namespace Taskly.Infrastructure.Services
     {
         public CookieService() { }
 
+        public async Task<string> IdentifyCookieSiteAsync(string cookiePath)
+        {
+            if (!File.Exists(cookiePath))
+                throw new FileNotFoundException($"Cookie file not found at: {cookiePath}");
+
+            try
+            {
+                // Read and apply cookies
+                var cookieJson = await File.ReadAllTextAsync(cookiePath);
+                var cookies = JsonConvert.DeserializeObject<List<CookieDto>>(cookieJson)!;
+                var domain = cookies.FirstOrDefault()?.Domain?.TrimStart('.') ?? string.Empty;
+
+                return domain;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ CookieService error: {ex.Message}");
+                throw;
+            }
+        }
+
         public async Task<(IPage page, IBrowser browser)> LoadCookieOnPageAsync(string cookiePath, bool hideBrowser)
         {
             if (!File.Exists(cookiePath))

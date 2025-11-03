@@ -24,6 +24,8 @@ namespace Taskly.Infrastructure.Services
         private readonly IRedditService _redditService;
         private readonly ITikTokService _tikTokService;
 
+        private readonly ICookieService _cookieService;
+
         /// <summary>
         /// Constructor for dependency injection.
         /// </summary>
@@ -33,13 +35,15 @@ namespace Taskly.Infrastructure.Services
             ITwitterService twitterService,
             IRedditService redditService,
             ITikTokService tikTokService,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            ICookieService cookieService)
         {
             _facebookService = facebookService;
             _instagramService = instagramService;
             _twitterService = twitterService;
             _redditService = redditService;
             _tikTokService = tikTokService;
+            _cookieService = cookieService;
         }
 
         /// <summary>
@@ -52,7 +56,7 @@ namespace Taskly.Infrastructure.Services
         {
             // ✅ 3. Determine extraction scope
 
-            if (searchDto.Platform == "All Platforms")
+            if (searchDto.MultiPlatform)
             {
                 // If user selects "All Platforms", initiate extraction for all services simultaneously.
                 // Uses Task.WhenAll to run all searches concurrently for speed and efficiency.
@@ -71,22 +75,24 @@ namespace Taskly.Infrastructure.Services
             else
             {
                 // If a specific platform is selected, call only that service.
+                var domain = await _cookieService.IdentifyCookieSiteAsync(searchDto.CookiePath);
+
                 // This ensures faster, platform-targeted scraping.
-                switch (searchDto.Platform.ToLower())
+                switch (domain)
                 {
-                    case "facebook":
+                    case "facebook.com":
                         await _facebookService.SearchAsync(searchDto);
                         break;
-                    case "instagram":
+                    case "instagram.com":
                         await _instagramService.SearchAsync(searchDto);
                         break;
-                    case "twitter":
+                    case "x.com":
                         await _twitterService.SearchAsync(searchDto);
                         break;
-                    case "reddit":
+                    case "reddit.com":
                         await _redditService.SearchAsync(searchDto);
                         break;
-                    case "tiktok":
+                    case "tiktok.com":
                         await _tikTokService.SearchAsync(searchDto);
                         break;
                     default:

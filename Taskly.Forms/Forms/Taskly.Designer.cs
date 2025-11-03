@@ -29,10 +29,9 @@
         private void InitializeComponent()
         {
             grpSearchInput = new GroupBox();
+            ckMultiPlatform = new CheckBox();
             cboCookie = new ComboBox();
             lblCookie = new Label();
-            cboPlatform = new ComboBox();
-            lblPlatform = new Label();
             btnBulkSearch = new Button();
             txtPages = new TextBox();
             btnSearch = new Button();
@@ -75,10 +74,9 @@
             // grpSearchInput
             // 
             grpSearchInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            grpSearchInput.Controls.Add(ckMultiPlatform);
             grpSearchInput.Controls.Add(cboCookie);
             grpSearchInput.Controls.Add(lblCookie);
-            grpSearchInput.Controls.Add(cboPlatform);
-            grpSearchInput.Controls.Add(lblPlatform);
             grpSearchInput.Controls.Add(btnBulkSearch);
             grpSearchInput.Controls.Add(txtPages);
             grpSearchInput.Controls.Add(btnSearch);
@@ -95,11 +93,22 @@
             grpSearchInput.TabStop = false;
             grpSearchInput.Text = "Search Input";
             // 
+            // ckMultiPlatform
+            // 
+            ckMultiPlatform.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            ckMultiPlatform.AutoSize = true;
+            ckMultiPlatform.Location = new Point(912, 203);
+            ckMultiPlatform.Name = "ckMultiPlatform";
+            ckMultiPlatform.Size = new Size(116, 24);
+            ckMultiPlatform.TabIndex = 18;
+            ckMultiPlatform.Text = "All Platforms";
+            ckMultiPlatform.UseVisualStyleBackColor = true;
+            // 
             // cboCookie
             // 
             cboCookie.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             cboCookie.FormattingEnabled = true;
-            cboCookie.Location = new Point(176, 141);
+            cboCookie.Location = new Point(176, 107);
             cboCookie.Name = "cboCookie";
             cboCookie.Size = new Size(730, 28);
             cboCookie.TabIndex = 17;
@@ -107,29 +116,11 @@
             // lblCookie
             // 
             lblCookie.AutoSize = true;
-            lblCookie.Location = new Point(23, 144);
+            lblCookie.Location = new Point(23, 110);
             lblCookie.Name = "lblCookie";
             lblCookie.Size = new Size(55, 20);
             lblCookie.TabIndex = 16;
             lblCookie.Text = "Cookie";
-            // 
-            // cboPlatform
-            // 
-            cboPlatform.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            cboPlatform.FormattingEnabled = true;
-            cboPlatform.Location = new Point(176, 107);
-            cboPlatform.Name = "cboPlatform";
-            cboPlatform.Size = new Size(730, 28);
-            cboPlatform.TabIndex = 15;
-            // 
-            // lblPlatform
-            // 
-            lblPlatform.AutoSize = true;
-            lblPlatform.Location = new Point(23, 110);
-            lblPlatform.Name = "lblPlatform";
-            lblPlatform.Size = new Size(66, 20);
-            lblPlatform.TabIndex = 14;
-            lblPlatform.Text = "Platform";
             // 
             // btnBulkSearch
             // 
@@ -172,7 +163,7 @@
             // rtxtQuery
             // 
             rtxtQuery.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            rtxtQuery.Location = new Point(176, 173);
+            rtxtQuery.Location = new Point(176, 139);
             rtxtQuery.Name = "rtxtQuery";
             rtxtQuery.Size = new Size(730, 127);
             rtxtQuery.TabIndex = 11;
@@ -192,7 +183,7 @@
             // lblQuery
             // 
             lblQuery.AutoSize = true;
-            lblQuery.Location = new Point(23, 173);
+            lblQuery.Location = new Point(23, 139);
             lblQuery.Name = "lblQuery";
             lblQuery.Size = new Size(48, 20);
             lblQuery.TabIndex = 2;
@@ -488,8 +479,6 @@
         private Label lblPages;
         private RichTextBox rtxtQuery;
         private CheckBox ckPrivateMode;
-        private Label lblPlatform;
-        private ComboBox cboPlatform;
         private MenuStrip menuStrip1;
         private ToolStripMenuItem dataControlsToolStripMenuItem;
         private Button button1;
@@ -513,5 +502,6 @@
         private Label lblMessagingGroup;
         private Button btnRemoveGroup;
         private Button btnAddGroup;
+        private CheckBox ckMultiPlatform;
     }
 }

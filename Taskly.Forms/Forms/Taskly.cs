@@ -44,7 +44,7 @@ namespace Taskly.Forms.Forms
                     Keyword = txtKeywords.Text,
                     Query = rtxtQuery.Text,
                     PageNumber = int.Parse(txtPages.Text),
-                    Platform = cboPlatform.Text,
+                    MultiPlatform = ckMultiPlatform.Checked,
                     CookiePath = cboCookie.Text
                 };
 
@@ -62,21 +62,8 @@ namespace Taskly.Forms.Forms
 
         private void Taskly_Load(object sender, EventArgs e)
         {
-            LoadPlatform();
             LoadSummary();
             LoadCookies();
-        }
-
-        private void LoadPlatform()
-        {
-            cboPlatform.Items.Add("All Platforms");
-            cboPlatform.Items.Add("Facebook");
-            cboPlatform.Items.Add("Instagram");
-            cboPlatform.Items.Add("Twitter");
-            cboPlatform.Items.Add("Reddit");
-            cboPlatform.Items.Add("TikTok");
-
-            cboPlatform.SelectedIndex = 0;
         }
 
         private void LoadSummary() 
