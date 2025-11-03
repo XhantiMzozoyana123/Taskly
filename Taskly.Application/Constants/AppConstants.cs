@@ -1,4 +1,5 @@
-﻿using System;
+﻿using HtmlAgilityPack;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -64,6 +65,19 @@ namespace Taskly.Application.Constants
             ";
 
             return htmlTemplate;
+        }
+
+
+        public static string ConvertHtmlToPlainText(string input)
+        {
+            // Load HTML
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(input);
+
+            // Extract plain text
+            string plainText = doc.DocumentNode.InnerText;
+
+            return plainText;
         }
     }
 }

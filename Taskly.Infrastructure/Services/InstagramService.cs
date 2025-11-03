@@ -50,31 +50,31 @@ namespace Taskly.Infrastructure.Services
                 var scrapedPostUrls = new HashSet<string>(); // Track already scraped post URLs
 
                 // Loop for scrolling and loading multiple pages of Instagram posts
-                for (int i = 0; i < searchDto.PageNumber; i++) // searchDto.PageNumber now controls scroll iterations
+                for (int i = 0; i < searchDto.PageNumber; i++)
                 {
-                    // Get all anchor tags that represent Instagram posts currently loaded
                     var instagramPostLocators = await page.Locator("a._a6hd").AllAsync();
 
                     foreach (var currentPostLocator in instagramPostLocators)
                     {
+                        // Get the href (relative link) for the post
                         string? postUrl = await currentPostLocator.GetAttributeAsync("href");
 
-                        // Make post URL absolute immediately for reliable tracking
-                        string? absolutePostUrl = null;
+                        // Convert it to an absolute URL
+                        string? absolutePostUrl = !string.IsNullOrWhiteSpace(postUrl)
+                            ? $"https://www.instagram.com{postUrl}"
+                            : null;
 
-                        // Check if this post has already been scraped
-                        if (!string.IsNullOrWhiteSpace(absolutePostUrl) && scrapedPostUrls.Contains(absolutePostUrl))
-                            continue; // Already scraped, skip
+                        // Skip if this post has already been scraped
+                        if (string.IsNullOrWhiteSpace(absolutePostUrl) || scrapedPostUrls.Contains(absolutePostUrl))
+                            continue;
 
-                        if (!string.IsNullOrWhiteSpace(absolutePostUrl))
-                        {
-                            scrapedPostUrls.Add(absolutePostUrl); // Add to set
-                        }
+                        // Add to the set to prevent duplicates
+                        scrapedPostUrls.Add(absolutePostUrl);
 
                         string? imageUrl = null;
                         string? altText = null;
 
-                        // Locate the img tag within the current post link
+                        // Locate the image within the post
                         var imgLocator = currentPostLocator.Locator("img.x5yr21d").First;
 
                         if (await imgLocator.IsVisibleAsync())
@@ -84,42 +84,43 @@ namespace Taskly.Infrastructure.Services
                         }
 
                         // Only process and save if core data exists
-                        if (!string.IsNullOrWhiteSpace(absolutePostUrl) && !string.IsNullOrWhiteSpace(imageUrl))
+                        if (!string.IsNullOrWhiteSpace(imageUrl))
                         {
+                            // Use the absolute URL to get more info
                             var postDto = await GetAuthorPost(page, absolutePostUrl);
 
-                            // Use AI service to check if the content (altText) is relevant
-                            var isRelevant = await _aiService.CheckIfContentIsRelevantAsync(altText, searchDto.Query);
-                            if (isRelevant)
+                            if (postDto != null)
                             {
-                                var lead = new Leads()
-                                {
-                                    Name = postDto.Author,
-                                    ProfileUrl = postDto.ProfileUrl,
-                                    Status = "New",
-                                    Platform = "Instagram",
-                                    PostDescription = postDto.Text,
-                                    PostUrl = postUrl,
-                                    Keywords = searchDto.Keyword,
-                                    Query = searchDto.Query,
-                                    PostDate = postDto.PublishedDate
-                                };
+                                // Use AI to check relevance
+                                var isRelevant = await _aiService.CheckIfContentIsRelevantAsync(altText, searchDto.Query);
 
-                                await _context.Leads.AddAsync(lead);
-                                await _context.SaveChangesAsync();
+                                if (isRelevant)
+                                {
+                                    var lead = new Leads
+                                    {
+                                        Name = postDto.Author,
+                                        ProfileUrl = postDto.ProfileUrl,
+                                        Status = "New",
+                                        Platform = "Instagram",
+                                        PostDescription = postDto.Text,
+                                        PostUrl = absolutePostUrl, // ✅ now using the full URL
+                                        Keywords = searchDto.Keyword,
+                                        Query = searchDto.Query,
+                                        PostDate = postDto.PublishedDate
+                                    };
+
+                                    await _context.Leads.AddAsync(lead);
+                                    await _context.SaveChangesAsync();
+                                }
                             }
                         }
                     }
 
-                    // Scrolling strategy: Scroll down to load more content
-                    // Instagram uses infinite scrolling. We scroll a fixed amount (or to bottom)
-                    // and wait for new content to render.
-                    await page.EvaluateAsync(@"window.scrollBy(0, window.innerHeight);"); // Scroll by one viewport height
-                    await Task.Delay(2000); // Wait for new posts to load after scrolling. Adjust as needed.
-
-                    // Optional: You could add a check here to see if scrolling actually loaded new content
-                    // e.g., compare scrapedPostUrls.Count before and after scroll. If no new posts, break.
+                    // Scroll down to load more posts
+                    await page.EvaluateAsync(@"window.scrollBy(0, window.innerHeight);");
+                    await Task.Delay(2000);
                 }
+
             }
             catch (Exception ex)
             {
@@ -134,78 +135,57 @@ namespace Taskly.Infrastructure.Services
 
         public async Task<IPage> GoToExplorePageAsync(IPage page, SearchDto searchDto)
         {
-            // Wait for the element to appear (recommended)
-            await page.WaitForSelectorAsync("div[aria-selected='true'] svg[aria-label='Explore']");
-
-            // Click on the parent div (the outermost clickable element)
-            await page.ClickAsync("div[aria-selected='true']:has(svg[aria-label='Explore'])");
-
-            // Type your keyword
-            await page.FillAsync("input[aria-label='Search input']", searchDto.Keyword);
-
-            // Optional: press Enter
-            await page.Keyboard.PressAsync("Enter");
-
-            // Wait for results (optional)
-            await page.WaitForTimeoutAsync(2000);
+            // Go to Instagram Explore page
+            await page.GotoAsync($"https://www.instagram.com/explore/search/keyword/?q={searchDto.Keyword.Replace(" ", "+")}", new PageGotoOptions
+            {
+                WaitUntil = WaitUntilState.DOMContentLoaded
+            });
 
             return page;
         }
 
         public async Task<PostContentDto> GetAuthorPost(IPage page, string postUrl)
         {
-
-            PostContentDto postContentDto = new PostContentDto();
-
             if (string.IsNullOrWhiteSpace(postUrl))
                 return null;
 
-            // Create a new tab (page)
             var newPage = await page.Context.NewPageAsync();
+            var postContentDto = new PostContentDto();
 
             try
             {
-                await page.GotoAsync(postUrl, new PageGotoOptions
+                await newPage.GotoAsync(postUrl, new PageGotoOptions
                 {
-                    WaitUntil = WaitUntilState.DOMContentLoaded
+                    WaitUntil = WaitUntilState.DOMContentLoaded,
+                    Timeout = 30000
                 });
 
-                // Wait for the username/caption/time to appear
-                await page.Locator("span._ap3a._aaco._aacw._aacx._aad7._aade, span.x193iq5w.xeuugli, time.xdwrcjd")
-                          .First
-                          .WaitForAsync(new LocatorWaitForOptions
-                          {
-                              State = WaitForSelectorState.Visible,
-                              Timeout = 10000
-                          });
-
-                // Scrape username
-                string? username = null;
-                var usernameLocator = page.Locator("span._ap3a._aaco._aacw._aacx._aad7._aade");
-                if (await usernameLocator.IsVisibleAsync())
+                // Wait for essential elements
+                await newPage.Locator("time.xdwrcjd").WaitForAsync(new LocatorWaitForOptions
                 {
-                    username = await usernameLocator.InnerTextAsync();
-                }
+                    State = WaitForSelectorState.Visible,
+                    Timeout = 10000
+                });
 
-                // Scrape caption
-                string? caption = null;
-                var captionLocator = page.Locator("span.x193iq5w.xeuugli");
-                if (await captionLocator.IsVisibleAsync())
-                {
-                    caption = await captionLocator.InnerHTMLAsync();
-                    caption = caption.Replace("<br>", "\n")
-                                     .Replace("<br/>", "\n")
-                                     .Replace("<br />", "\n");
-                    caption = System.Text.RegularExpressions.Regex.Replace(caption, "<.*?>", string.Empty).Trim();
-                }
+                // Wait for the link element to load
+                await page.WaitForSelectorAsync("a.x1i10hfl.xjbqb8w.x1ejq31n");
 
-                // Scrape post datetime
+                // Username
+                string username = await newPage.GetAttributeAsync("a.x1i10hfl.xjbqb8w.x1ejq31n", "href");
+                username = username.Replace("/", "").Trim();
+
+                // Extract the caption text
+                string caption = await newPage.InnerHTMLAsync("div.html-div");
+                caption = AppConstants.ConvertHtmlToPlainText(caption);
+
+                // Datetime
                 DateTime? postDate = null;
-                var timeLocator = page.Locator("time.xdwrcjd");
+                var timeLocator = newPage.Locator("time.xdwrcjd");
                 if (await timeLocator.IsVisibleAsync())
                 {
                     var datetimeAttr = await timeLocator.GetAttributeAsync("datetime");
-                    if (!string.IsNullOrWhiteSpace(datetimeAttr) && DateTime.TryParse(datetimeAttr, out DateTime parsedDate))
+                    if (!string.IsNullOrWhiteSpace(datetimeAttr) &&
+                        DateTime.TryParse(datetimeAttr, out DateTime parsedDate))
                     {
                         postDate = parsedDate;
                     }
@@ -214,22 +194,24 @@ namespace Taskly.Infrastructure.Services
                 postContentDto.Author = username ?? string.Empty;
                 postContentDto.Text = caption ?? string.Empty;
                 postContentDto.PostUrl = postUrl;
-                postContentDto.ProfileUrl = $"https://www.instagram.com/{username}/";
-                postContentDto.PublishedDate = postDate.Value;
+                postContentDto.ProfileUrl = !string.IsNullOrWhiteSpace(username)
+                    ? $"https://www.instagram.com/{username}/"
+                    : string.Empty;
+                postContentDto.PublishedDate = postDate ?? DateTime.UtcNow;
 
+                return postContentDto;
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[InstagramService.GetAuthorPost] Error: {ex.Message}");
                 return null;
             }
             finally
             {
-                // Close the tab to free resources
                 await newPage.CloseAsync();
             }
-
-            return postContentDto;
         }
+
 
         public async Task<IPage> DirectMessagingAsync(IPage page, MessengerDto messengerDto)
         {
