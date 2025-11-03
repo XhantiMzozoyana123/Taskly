@@ -12,9 +12,7 @@ namespace Taskly.Application.Interfaces
     {
         Task SearchAsync(SearchDto searchDto);
 
-        Task<IPage> LoginAsync(IPage page, SearchDto searchDto);
-
-        Task<IPage> GoToExplorePageAsync(IPage page, SearchDto searchDto);
+        Task<IPage> GoToDiscoveryPageAsync(IPage page, SearchDto searchDto);
 
         Task<IPage> DirectMessagingAsync(IPage page, MessengerDto messengerDto);
 

@@ -11,17 +11,23 @@ using Taskly.Domain;
 
 namespace Taskly.Infrastructure.Services
 {
+    /// <summary>
+    /// ExtractService coordinates scraping/extraction of content from multiple social media platforms.
+    /// Supports Facebook, Instagram, Twitter, Reddit, and TikTok.
+    /// Leverages platform-specific services for the actual scraping logic.
+    /// </summary>
     public class ExtractService : IExtractService
     {
-        private readonly ApplicationDbContext _context;
         private readonly IFacebookService _facebookService;
         private readonly IInstagramService _instagramService;
         private readonly ITwitterService _twitterService;
         private readonly IRedditService _redditService;
         private readonly ITikTokService _tikTokService;
 
+        /// <summary>
+        /// Constructor for dependency injection.
+        /// </summary>
         public ExtractService(
-            ApplicationDbContext context,
             IFacebookService facebookService,
             IInstagramService instagramService,
             ITwitterService twitterService,
@@ -29,7 +35,6 @@ namespace Taskly.Infrastructure.Services
             ITikTokService tikTokService,
             IHttpContextAccessor httpContextAccessor)
         {
-            _context = context;
             _facebookService = facebookService;
             _instagramService = instagramService;
             _twitterService = twitterService;
@@ -37,24 +42,36 @@ namespace Taskly.Infrastructure.Services
             _tikTokService = tikTokService;
         }
 
+        /// <summary>
+        /// Extracts content/posts from specified platforms based on SearchDto.
+        /// </summary>
+        /// <param name="searchDto">DTO containing search parameters, platform, and query details.</param>
+        /// <returns>Task representing the asynchronous extraction operation.</returns>
+        /// <exception cref="ArgumentException">Thrown if an unsupported platform is specified.</exception>
         public async Task ExtractAsync(SearchDto searchDto)
         {
-            // ✅ 3. Continue with extraction logic
+            // ✅ 3. Determine extraction scope
+
             if (searchDto.Platform == "All Platforms")
             {
-                // When no platform is specified, extract based on user’s subscription tier
+                // If user selects "All Platforms", initiate extraction for all services simultaneously.
+                // Uses Task.WhenAll to run all searches concurrently for speed and efficiency.
+
                 var tasks = new List<Task>();
 
-                tasks.Add(_facebookService.SearchAsync(searchDto));
-                tasks.Add(_instagramService.SearchAsync(searchDto));
-                tasks.Add(_twitterService.SearchAsync(searchDto));
-                tasks.Add(_redditService.SearchAsync(searchDto));
-                tasks.Add(_tikTokService.SearchAsync(searchDto));
+                tasks.Add(_facebookService.SearchAsync(searchDto));  // Scrape Facebook
+                tasks.Add(_instagramService.SearchAsync(searchDto)); // Scrape Instagram
+                tasks.Add(_twitterService.SearchAsync(searchDto));   // Scrape Twitter
+                tasks.Add(_redditService.SearchAsync(searchDto));    // Scrape Reddit
+                tasks.Add(_tikTokService.SearchAsync(searchDto));    // Scrape TikTok
 
+                // Await all platform tasks to finish
                 await Task.WhenAll(tasks);
             }
             else
             {
+                // If a specific platform is selected, call only that service.
+                // This ensures faster, platform-targeted scraping.
                 switch (searchDto.Platform.ToLower())
                 {
                     case "facebook":
@@ -73,6 +90,7 @@ namespace Taskly.Infrastructure.Services
                         await _tikTokService.SearchAsync(searchDto);
                         break;
                     default:
+                        // Throw error if the platform is not supported
                         throw new ArgumentException("Unsupported platform specified.");
                 }
             }

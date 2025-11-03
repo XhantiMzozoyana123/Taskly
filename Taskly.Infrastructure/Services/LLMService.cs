@@ -48,7 +48,7 @@ namespace Taskly.Infrastructure.Services
             var json = JsonSerializer.Serialize(payload);
 
             // Get API key from configuration
-            var apiKey = _configuration["Gemini:ApiKey"];
+            var apiKey = "AIzaSyC_g7-42vqxQTGSa3tFVwSUIyRZJOaiG20";
             if (string.IsNullOrWhiteSpace(apiKey))
                 throw new InvalidOperationException("Gemini API key is missing in configuration.");
 

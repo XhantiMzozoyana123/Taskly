@@ -9,14 +9,18 @@ namespace Taskly.Application.Dtos
 {
     public class MessengerDto
     {
-        public string UserId { get; set; } = string.Empty;
-
         public string Text { get; set; } = string.Empty;
+
+        public List<string> TextList { get; set; } = new List<string>();
 
         public Leads Lead { get; set; } = new Leads();
 
-        public bool AbTestRotation { get; set; } = false;
+        public bool MessegeRotation { get; set; } = false;
 
-        public bool PrivateMode { get; set; } = true;
+        public bool AccountRotation { get; set; } = false; 
+
+        public string CookiePath { get; set; } = string.Empty; // Path to the cookie file for authentication
+
+        public bool PrivateMode { get; set; } = false;
     }
 }

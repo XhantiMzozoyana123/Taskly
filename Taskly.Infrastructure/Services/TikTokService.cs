@@ -17,11 +17,13 @@ namespace Taskly.Infrastructure.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IAiService _aiService;
+        private readonly ICookieService _cookieService;
         
-        public TikTokService(ApplicationDbContext context, IAiService aiService)
+        public TikTokService(ApplicationDbContext context, IAiService aiService, ICookieService cookieService)
         {
             _context = context;
             _aiService = aiService;
+            _cookieService = cookieService;
         }
 
         public async Task<IPage> DirectMessagingAsync(IPage page, MessengerDto messengerDto)
@@ -80,7 +82,7 @@ namespace Taskly.Infrastructure.Services
             return videoDescription?.Trim() ?? string.Empty;
         }
 
-        public async Task<IPage> GoToExplorePageAsync(IPage page, SearchDto searchDto)
+        public async Task<IPage> GoToDiscoveryPageAsync(IPage page, SearchDto searchDto)
         {
             // Go to X Explore page
             await page.GotoAsync("https://www.tiktok.com/en/", new PageGotoOptions
@@ -106,58 +108,21 @@ namespace Taskly.Infrastructure.Services
             return page;
         }
 
-        public async Task<IPage> LoginAsync(IPage page, SearchDto searchDto)
-        {
-            var socialLogin = await _context.SocialLogins.FirstOrDefaultAsync(x =>
-                               x.Platform == "TikTok");
-
-            if (socialLogin == null)
-            {
-                // Internal logging: "Twitter login credentials not found for UserId: {searchDto.UserId}"
-                return page;
-            }
-
-            // --- START LOGIN SEQUENCE ---
-            await page.GotoAsync("https://www.tiktok.com/login/phone-or-email/email", new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 30000 });
-
-            // Step 1: Enter username/email
-            var usernameInput = page.Locator("input[name='username']");
-            await usernameInput.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 10000 });
-            await usernameInput.FillAsync(socialLogin.Username);
-
-            // Step 2: Enter password
-            var passwordInput = page.Locator("input[name='password']");
-            await passwordInput.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 10000 });
-            await passwordInput.FillAsync(socialLogin.Password);
-
-            // Step 3: Click the login button using data-e2e
-            var loginButton = page.Locator("[data-e2e='login-button']");
-            await loginButton.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 10000 });
-            await loginButton.ClickAsync();
-
-            // Wait for navigation after login
-            await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions { Timeout = 30000 });
-
-            // --- END LOGIN SEQUENCE ---
-            return page;
-        }
-
         public async Task SearchAsync(SearchDto searchDto)
         {
             if (string.IsNullOrWhiteSpace(searchDto.Keyword))
                 return;
 
-            using var playwright = await Playwright.CreateAsync();
-            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = searchDto.PrivateMode });
-            var page = await browser.NewPageAsync();
+            IPage page = null;
+            IBrowser browser = null;
 
-            try 
+            try
             {
-                // Login to Tik-Tok if credentials are provided
-                page = await LoginAsync(page, searchDto);
+                // Login to Tik-Tok
+                (page, browser) = await _cookieService.LoadCookieOnPageAsync(searchDto.CookiePath, searchDto.PrivateMode);
 
                 // Navigate to the specified URL (e.g., search results or user timeline)
-                page = await GoToExplorePageAsync(page, searchDto);
+                page = await GoToDiscoveryPageAsync(page, searchDto);
 
                 // Store the base URL for constructing absolute URLs later
                 string tiktokUrl = page.Url;

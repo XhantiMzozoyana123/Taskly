@@ -17,11 +17,13 @@ namespace Taskly.Infrastructure.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IAiService _aiService;
+        private readonly ICookieService _cookieService;
 
-        public RedditService(ApplicationDbContext context, IAiService aiService) // Constructor for dependency injection
+        public RedditService(ApplicationDbContext context, IAiService aiService, ICookieService cookieService) // Constructor for dependency injection
         {
             _context = context;
             _aiService = aiService;
+            _cookieService = cookieService;
         }
 
         public async Task SearchAsync(SearchDto searchDto)
@@ -29,13 +31,14 @@ namespace Taskly.Infrastructure.Services
             if (string.IsNullOrWhiteSpace(searchDto.Keyword))
                 return;
 
-            using var playwright = await Playwright.CreateAsync();
-            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = searchDto.PrivateMode });
-            var page = await browser.NewPageAsync();
+            IPage page = null;
+            IBrowser browser = null;
 
             try
             {
-                page = await LoginAsync(page, searchDto);
+                // Login to Reddit
+                (page, browser) = await _cookieService.LoadCookieOnPageAsync(searchDto.CookiePath, searchDto.PrivateMode);
+
                 page = await FindSubredditsUrl(page, searchDto);
 
                 // Wait for first comment to appear
@@ -130,32 +133,6 @@ namespace Taskly.Infrastructure.Services
             {
                 await browser.CloseAsync();
             }
-        }
-
-        public async Task<IPage> LoginAsync(IPage page, SearchDto searchDto)
-        {
-            var socialLogin = await _context.SocialLogins.FirstAsync(x =>
-                   x.Platform == "Reddit");
-
-            // --- START LOGIN SEQUENCE ---
-            await page.GotoAsync("https://www.reddit.com/login/", new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
-
-            // Fill username
-            await page.Locator("input[name='username']").FillAsync(socialLogin.Username);
-
-            // Fill password
-            await page.Locator("input[name='password']").FillAsync(socialLogin.Password);
-
-            // Click login button
-            await page.Locator("button.login.oidc").ClickAsync();
-
-            // Wait for navigation after login. This could be waiting for network idle,
-            // or waiting for a specific element that appears on the authenticated homepage.
-            // For simplicity, we'll wait for network to be idle.
-            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-            // --- END LOGIN SEQUENCE ---
-            
-            return page;
         }
 
         public async Task ScrapeSocialLinks(IPage page, Leads lead, string profileUrl)

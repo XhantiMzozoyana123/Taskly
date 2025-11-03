@@ -1,7 +1,12 @@
-﻿// File: Taskly.Infrastructure.Services/FacebookService.cs
+﻿using HtmlAgilityPack;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Playwright;
+using Newtonsoft.Json;
 using System;
+using System.Buffers.Text;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -18,31 +23,29 @@ namespace Taskly.Infrastructure.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IAiService _aiService;
+        private readonly ICookieService _cookieService;
 
-        public FacebookService(ApplicationDbContext context, IAiService aiService)
+        public FacebookService(ApplicationDbContext context, IAiService aiService, ICookieService cookieService)
         {
             _context = context;
             _aiService = aiService;
+            _cookieService = cookieService;
         }
 
         public async Task SearchAsync(SearchDto searchDto)
         {
             if (string.IsNullOrWhiteSpace(searchDto.Keyword))
-            {
-                // Internal logging for invalid URL or missing Facebook login credentials.
                 return;
-            }
 
-            using var playwright = await Playwright.CreateAsync();
-            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = searchDto.PrivateMode });
-            var page = await browser.NewPageAsync();
+            IPage page = null;
+            IBrowser browser = null;
 
             try
             {
                 // Login to Facebook
-                page = await LoginAsync(page, searchDto);
+                (page, browser) = await _cookieService.LoadCookieOnPageAsync(searchDto.CookiePath, searchDto.PrivateMode);
 
-                // Navigate to the specified Facebook URL (e.g., group or page)
+                // Navigate to Facebook Groups search page
                 page = await GoToFacebookGroupPage(page, searchDto);
 
                 // Get all Facebook groups from the search results (for logging/debugging)
@@ -55,18 +58,15 @@ namespace Taskly.Infrastructure.Services
                         // Navigate to each group URL one by one
                         await page.GotoAsync(groupUrl, new PageGotoOptions
                         {
-                            WaitUntil = WaitUntilState.DOMContentLoaded,
-                            Timeout = 30000
+                            WaitUntil = WaitUntilState.DOMContentLoaded
                         });
                         // Wait for the main content to load
-                        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-                        
-                        // Scrape posts from
+                        //await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
                         // Wait for the first post container to appear using the specific classes provided
                         string mainPostContainerSelector = "div.html-div.xdj266r.x14z9mp.xat24cr.x1lziwak.xexx8yu.xyri2b.x18d9i69.x1c1uobl:has(h3[id*='_r_'])";
                         var firstPostLocator = page.Locator(mainPostContainerSelector).First;
-                        await firstPostLocator.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 15000 });
+                        //await firstPostLocator.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 15000 });
 
                         var scrapedPostPermalinks = new HashSet<string>(); // Track already scraped post URLs to avoid duplicates
 
@@ -101,7 +101,8 @@ namespace Taskly.Infrastructure.Services
 
                                 // --- 2. Extract Author's Name and Profile URL ---
                                 // The author's name is inside a <b> tag within a span that is a child of the main author link.
-                                var authorNameLocator = currentPostLocator.Locator("h3[id*='_r_'] a[attributionsrc] span.x193iq5w span.x193iq5w b span.html-span").First;
+                                var authorNameLocator = currentPostLocator.Locator("h3[id*='_r_'] a span.html-span").First;
+
                                 if (await authorNameLocator.IsVisibleAsync())
                                 {
                                     authorName = await authorNameLocator.InnerTextAsync();
@@ -111,19 +112,13 @@ namespace Taskly.Infrastructure.Services
                                 var authorProfileLinkLocator = currentPostLocator.Locator("h3[id*='_r_'] a[attributionsrc]").First;
                                 if (await authorProfileLinkLocator.IsVisibleAsync())
                                 {
-                                    string? relativeProfileUrl = await authorProfileLinkLocator.GetAttributeAsync("href");
+                                    string rawProfileUrl = await authorProfileLinkLocator.GetAttributeAsync("href");
+                                    authorProfileUrl = await AuthorProfileUrlExchangedUrlAsync(page, rawProfileUrl);
                                 }
 
                                 // --- 3. Extract Post Text ---
                                 // This is typically within div[data-ad-rendering-role="story_message"] or similar, potentially with nested spans.
-                                var postTextContainerLocator = currentPostLocator.Locator("div[data-ad-rendering-role='story_message']").First;
-                                if (await postTextContainerLocator.IsVisibleAsync())
-                                {
-                                    // Extract innerText and clean up potential line breaks and emojis
-                                    postText = await postTextContainerLocator.InnerTextAsync();
-                                    postText = Regex.Replace(postText, @"\n+", "\n").Trim(); // Normalize line breaks
-                                                                                             // Further emoji cleanup might be needed if they appear as text and not images
-                                }
+                                postText = await GetPostDescriptionAsync(page, authorProfileUrl);// Normalize line breaks
 
                                 // --- 4. Extract Published Datetime ---
                                 // Based on the provided HTML, there isn't a direct <time datetime="..."> for the main post.
@@ -135,26 +130,39 @@ namespace Taskly.Infrastructure.Services
                                 // Only process and save if core data exists
                                 if (!string.IsNullOrWhiteSpace(authorName) || !string.IsNullOrWhiteSpace(postText))
                                 {
-                                    // Use AI service to check if the content is relevant
-                                    var isRelevant = await _aiService.CheckIfContentIsRelevantAsync(postText, searchDto.Query);
+                                    var existingLead = await _context.Leads.FirstOrDefaultAsync(l =>
+                                               l.Name == authorName);
 
-                                    if (isRelevant)
+                                    if (existingLead == null)
                                     {
-                                        var lead = new Leads()
-                                        {
-                                            Name = authorName,
-                                            ProfileUrl = authorProfileUrl,
-                                            Status = "New",
-                                            Platform = "Facebook",
-                                            PostDescription = postText,
-                                            PostUrl = postPermalink,
-                                            Keywords = searchDto.Keyword,
-                                            Query = searchDto.Query,
-                                            PostDate = publishedDate.Value
-                                        };
+                                        // Use AI service to check if the content is relevant
+                                        var isRelevant = await _aiService.CheckIfContentIsRelevantAsync(postText, searchDto.Query);
 
-                                        await _context.Leads.AddAsync(lead);
-                                        await _context.SaveChangesAsync();
+                                        if (isRelevant)
+                                        {
+                                            try
+                                            {
+                                                var lead = new Leads()
+                                                {
+                                                    Name = authorName,
+                                                    ProfileUrl = authorProfileUrl,
+                                                    Status = "New",
+                                                    Platform = "Facebook",
+                                                    PostDescription = postText,
+                                                    PostUrl = postPermalink,
+                                                    Keywords = searchDto.Keyword,
+                                                    Query = searchDto.Query,
+                                                    PostDate = publishedDate.Value
+                                                };
+
+                                                await _context.Leads.AddAsync(lead);
+                                                await _context.SaveChangesAsync();
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                continue; // Skip saving this lead on error
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -167,7 +175,7 @@ namespace Taskly.Infrastructure.Services
                             // (e.g., compare scrapedPostPermalinks.Count before and after scroll. If no new posts, break.)
                         }
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
                         continue; // Skip to the next group URL on error
                     }
@@ -184,48 +192,12 @@ namespace Taskly.Infrastructure.Services
             }
         }
 
-        public async Task<IPage> LoginAsync(IPage page, SearchDto searchDto)
-        {
-            var socialLogin = await _context.SocialLogins.FirstOrDefaultAsync(x =>
-                   x.Platform == "Facebook");
-
-            if (socialLogin == null)
-            {
-                // Internal logging: "Facebook login credentials not found for UserId: {searchDto.UserId}"
-                return page;
-            }
-
-
-            // --- START LOGIN SEQUENCE ---
-            await page.GotoAsync("https://www.facebook.com/login/", new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 30000 });
-
-            // Fill username
-            var emailInput = page.Locator("input[name='email']");
-            await emailInput.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 10000 });
-            await emailInput.FillAsync(socialLogin.Username);
-
-            // Fill password
-            var passwordInput = page.Locator("input[name='pass']");
-            await passwordInput.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 10000 });
-            await passwordInput.FillAsync(socialLogin.Password);
-
-            // Click login button
-            await page.Locator("button[name='login']").ClickAsync();
-
-            // Wait for navigation after login to the authenticated homepage/feed
-            await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions { Timeout = 30000 }); // Increased timeout
-
-            // --- END LOGIN SEQUENCE ---
-            return page;
-        }
-
         public async Task<IPage> GoToFacebookGroupPage(IPage page, SearchDto searchDto)
         {
             // Go to the groups explore page
             await page.GotoAsync("https://www.facebook.com/groups/feed", new PageGotoOptions
             {
-                WaitUntil = WaitUntilState.DOMContentLoaded,
-                Timeout = 60000
+                WaitUntil = WaitUntilState.DOMContentLoaded
             });
 
             // Locate the input by aria-label or placeholder (more stable)
@@ -233,13 +205,15 @@ namespace Taskly.Infrastructure.Services
             await searchInput.WaitForAsync();
 
             // Fill the search text
-            await searchInput.FillAsync(searchDto.Query);
+            await searchInput.FillAsync(searchDto.Keyword);
 
             // Press Enter
             await searchInput.PressAsync("Enter");
 
             // Wait for search results to appear
-            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            //await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+
+            await Task.Delay(5000); // Wait for results to load
 
             return page;
         }
@@ -250,8 +224,9 @@ namespace Taskly.Infrastructure.Services
             await page.GotoAsync(messengerDto.Lead.ProfileUrl, new PageGotoOptions
             {
                 WaitUntil = WaitUntilState.DOMContentLoaded,
-                Timeout = 30000
             });
+
+            await Task.Delay(5000);
 
             // Wait for and click the "Message" button
             var messageButton = page.Locator("span:has-text('Message')");
@@ -259,15 +234,19 @@ namespace Taskly.Infrastructure.Services
             {
                 return page; // Skip profiles with DMs disabled
             }
+
+            await Task.Delay(5000);
+
             await messageButton.First.ClickAsync();
 
             // Wait for the Lexical DM input to appear
-            var dmInput = page.Locator("div[contenteditable='true'][role='textbox'][data-lexical-editor='true']");
+            var dmInput = page.Locator("div[contenteditable='true'][role='textbox'][data-lexical-editor='true'][aria-placeholder='Aa']");
             await dmInput.WaitForAsync(new LocatorWaitForOptions
             {
                 State = WaitForSelectorState.Visible,
-                Timeout = 10000
             });
+
+            await Task.Delay(5000);
 
             // Focus and type the message
             await dmInput.ClickAsync();
@@ -276,8 +255,10 @@ namespace Taskly.Infrastructure.Services
             // Press Enter to send
             await page.Keyboard.PressAsync("Enter");
 
+            await Task.Delay(5000);
+
             // Wait for network idle to ensure message is sent
-            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            // await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
             return page;
         }
@@ -308,7 +289,7 @@ namespace Taskly.Infrastructure.Services
             var random = new Random();
             var randomAnchor = anchors[random.Next(anchors.Count)];
             var randomHref = await randomAnchor.GetAttributeAsync("href");
-            
+
             if (!string.IsNullOrWhiteSpace(randomHref))
             {
                 // Navigate to the selected group's URL
@@ -349,5 +330,81 @@ namespace Taskly.Infrastructure.Services
 
             return allhrefs;
         }
+
+        public async Task<string> AuthorProfileUrlExchangedUrlAsync(IPage page, string partialUrl)
+        {
+            // Create a new tab (page)
+            var newPage = await page.Context.NewPageAsync();
+
+            try
+            {
+                string baseUrl = "https://www.facebook.com";
+                // Go to the provided partial or relative URL
+                await newPage.GotoAsync(baseUrl + partialUrl, new PageGotoOptions
+                {
+                    WaitUntil = WaitUntilState.DOMContentLoaded,
+                    Timeout = 15000
+                });
+
+                // Wait for navigation to settle
+                await newPage.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+
+                // Grab the final, resolved URL (Facebook may redirect it)
+                string finalUrl = newPage.Url;
+
+                return finalUrl;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AuthorProfileUrlExchangedUrlAsync] Error: {ex.Message}");
+                return null;
+            }
+            finally
+            {
+                // Close the tab to free resources
+                await newPage.CloseAsync();
+            }
+        }
+
+        public async Task<string> GetPostDescriptionAsync(IPage page, string profileUrl)
+        {
+            // Open a new tab
+            var newPage = await page.Context.NewPageAsync();
+
+            try
+            {
+                // Navigate to the profile/group page
+                await newPage.GotoAsync(profileUrl, new PageGotoOptions
+                {
+                    WaitUntil = WaitUntilState.DOMContentLoaded,
+                    Timeout = 30000
+                });
+
+                // Get the full page HTML
+                string html = await newPage.ContentAsync();
+
+                // Convert HTML to text
+                var doc = new HtmlAgilityPack.HtmlDocument();
+                doc.LoadHtml(html);
+                string text = doc.DocumentNode.InnerText;
+
+                // Normalize whitespace and line breaks
+                text = Regex.Replace(text, @"\r\n|\r|\n", "\n");
+                text = Regex.Replace(text, @"\n+", "\n").Trim();
+
+                text = text.Replace("FacebookFacebook", "");
+
+                return text;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetPostDescriptionAsync] Error: {ex.Message}");
+                return string.Empty;
+            }
+            finally
+            {
+                await newPage.CloseAsync();
+            }
+        }
     }
-}
+} 

@@ -18,60 +18,33 @@ namespace Taskly.Infrastructure.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IAiService _aiService;
+        private readonly ICookieService _cookieService;
 
-        public TwitterService(ApplicationDbContext context, IAiService aiService)
+        public TwitterService(ApplicationDbContext context, IAiService aiService, ICookieService cookieService)
         {
             _context = context;
             _aiService = aiService;
-        }
-
-        public async Task<IPage> GoToExplorePageAsync(IPage page, SearchDto searchDto)
-        {
-            // Go to X Explore page
-            await page.GotoAsync("https://x.com/explore", new PageGotoOptions
-            {
-                WaitUntil = WaitUntilState.DOMContentLoaded,
-                Timeout = 30000
-            });
-
-            // Wait for the search box to appear
-            var searchInput = page.Locator("input[data-testid='SearchBox_Search_Input']");
-            await searchInput.WaitForAsync();
-
-            // Fill in the search query
-            await searchInput.FillAsync(searchDto.Keyword);
-
-            // Press Enter to trigger the search
-            await searchInput.PressAsync("Enter");
-
-            // Wait for the results page to load
-            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-
-            return page;
+            _cookieService = cookieService;
         }
 
         public async Task SearchAsync(SearchDto searchDto)
         {
-            if (string.IsNullOrWhiteSpace(searchDto.Url))
-            {
-                // Internal logging for invalid URL or missing Twitter login credentials.
+            if (string.IsNullOrWhiteSpace(searchDto.Keyword))
                 return;
-            }
 
-            using var playwright = await Playwright.CreateAsync();
-            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = searchDto.PrivateMode });
-            var page = await browser.NewPageAsync();
+            IPage page = null;
+            IBrowser browser = null;
 
             try
             {
-                // Login to Twitter (X)
-                page = await LoginAsync(page, searchDto);
-
+                // Login to Twitter
+                (page, browser) = await _cookieService.LoadCookieOnPageAsync(searchDto.CookiePath, searchDto.PrivateMode);
+                
                 // Navigate to the specified URL (e.g., search results or user timeline)
-                page = await GoToExplorePageAsync(page, searchDto);
+                page = await GoToTweetsPageAsync(page, searchDto);
 
                 // Wait for the first tweet element to be visible using the actual main div class
-                var mainTweetContainerSelector = "div.css-175oi2r.r-1iusvr4.r-16y2uox.r-1777fci.r-kzbkwu";
+                var mainTweetContainerSelector = ".css-175oi2r";
                 var tweetContainerLocator = page.Locator(mainTweetContainerSelector).First;
                 await tweetContainerLocator.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 15000 });
 
@@ -80,6 +53,9 @@ namespace Taskly.Infrastructure.Services
                 // Loop for scrolling and loading multiple pages of tweets
                 for (int i = 0; i < searchDto.PageNumber; i++)
                 {
+                    // Scrolling strategy: Scroll down to load more content
+                    await page.EvaluateAsync(@"window.scrollBy(1, window.innerHeight);");
+
                     // Get all tweet containers currently loaded on the page
                     var tweetLocators = await page.Locator(mainTweetContainerSelector).AllAsync();
 
@@ -88,15 +64,11 @@ namespace Taskly.Infrastructure.Services
                         // --- 1. Extract Post URL (Permalink) first for unique tracking ---
                         string? postUrl = null;
                         // Selector: The 'a' tag within the tweet's time block, which has href containing '/status/' and aria-label ending with 'ago'
-                        var postLinkLocator = currentTweetLocator.Locator("a[href*='/status/'][role='link'][aria-label$='ago']").First;
+                        var postLinkLocator = currentTweetLocator.Locator("a[href*='/status/']").First;
                         if (await postLinkLocator.IsVisibleAsync())
                         {
-                            string? relativePostUrl = await postLinkLocator.GetAttributeAsync("href");
-                            if (!string.IsNullOrWhiteSpace(relativePostUrl))
-                            {
-                                // Construct absolute URL
-                                postUrl = new Uri(new Uri(searchDto.Url), relativePostUrl).AbsoluteUri;
-                            }
+                            postUrl = await postLinkLocator.GetAttributeAsync("href");
+                            postUrl = !string.IsNullOrWhiteSpace(postUrl) ? $"https://x.com{postUrl}" : null;
                         }
 
                         // Use the absolute post URL as the unique identifier
@@ -125,10 +97,7 @@ namespace Taskly.Infrastructure.Services
                         if (await userProfileLinkLocator.IsVisibleAsync())
                         {
                             string? relativeProfileUrl = await userProfileLinkLocator.GetAttributeAsync("href");
-                            if (!string.IsNullOrWhiteSpace(relativeProfileUrl))
-                            {
-                                profileUrl = new Uri(new Uri(searchDto.Url), relativeProfileUrl).AbsoluteUri;
-                            }
+                            profileUrl = !string.IsNullOrWhiteSpace(relativeProfileUrl) ? $"https://x.com{relativeProfileUrl}" : null;
                         }
 
                         // --- 3. Extract Tweet Text ---
@@ -137,12 +106,14 @@ namespace Taskly.Infrastructure.Services
                         if (await tweetTextLocator.IsVisibleAsync())
                         {
                             tweetText = await tweetTextLocator.InnerTextAsync();
-                            tweetText = tweetText?.Trim(); // Clean up text
+                            tweetText = tweetText?.Trim();
                         }
 
                         // --- 4. Extract Published Datetime ---
-                        // The datetime attribute of the <time> tag, which is within the post permalink anchor.
-                        var timeLocator = currentTweetLocator.Locator("a[href*='/status/'][role='link'][aria-label$='ago'] time[datetime]").First;
+                        //// The datetime attribute of the <time> tag, which is within the post permalink anchor.
+                        var timeLocator = currentTweetLocator.Locator("a[href*='/status/']").First;
+                        timeLocator = timeLocator.Locator("time").First;
+
                         if (await timeLocator.IsVisibleAsync())
                         {
                             var dateTimeAttribute = await timeLocator.GetAttributeAsync("datetime");
@@ -160,28 +131,35 @@ namespace Taskly.Infrastructure.Services
 
                             if (isRelevant)
                             {
-                                var lead = new Leads()
+                                try
                                 {
-                                    Name = username,
-                                    ProfileUrl = profileUrl,
-                                    Status = "New",
-                                    Platform = "Twitter",
-                                    PostDescription = tweetText,
-                                    PostUrl = postUrl,
-                                    Keywords = searchDto.Keyword,
-                                    Query = searchDto.Query,
-                                    PostDate = publishedDate.Value
-                                };
+                                    var lead = new Leads()
+                                    {
+                                        Name = username,
+                                        ProfileUrl = profileUrl,
+                                        Status = "New",
+                                        Platform = "Twitter",
+                                        PostDescription = tweetText,
+                                        PostUrl = postUrl,
+                                        Keywords = searchDto.Keyword,
+                                        Query = searchDto.Query,
+                                        PostDate = publishedDate.Value
+                                    };
 
-                                await _context.Leads.AddAsync(lead);
-                                await _context.SaveChangesAsync();
+                                    await _context.Leads.AddAsync(lead);
+                                    await _context.SaveChangesAsync();
+                                }
+                                catch(Exception ex)
+                                {
+                                    throw ex;
+                                }
                             }
                         }
-                    }
 
-                    // Scrolling strategy: Scroll down to load more content
-                    await page.EvaluateAsync(@"window.scrollBy(0, window.innerHeight);");
-                    await Task.Delay(2000); // Wait for new tweets to load after scrolling.
+                        // Scrolling strategy: Scroll down to load more content
+                        await page.EvaluateAsync(@"window.scrollBy(2, window.innerHeight);");
+                        await Task.Delay(2000); // Wait for new tweets to load after scrolling.
+                    }
                 }
             }
             catch (Exception ex)
@@ -195,44 +173,14 @@ namespace Taskly.Infrastructure.Services
             }
         }
 
-        public async Task<IPage> LoginAsync(IPage page, SearchDto searchDto)
+        public async Task<IPage> GoToTweetsPageAsync(IPage page, SearchDto searchDto)
         {
-            var socialLogin = await _context.SocialLogins.FirstOrDefaultAsync(x =>
-                   x.Platform == "Twitter");
-
-            if (socialLogin == null)
+            // Go to X Explore page
+            await page.GotoAsync($"https://x.com/search?q={searchDto.Keyword.Replace(" ", "+")}", new PageGotoOptions
             {
-                // Internal logging: "Twitter login credentials not found for UserId: {searchDto.UserId}"
-                return page;
-            }
+                WaitUntil = WaitUntilState.DOMContentLoaded
+            });
 
-            var userName = TokenEncryptor.Decrypt(socialLogin.UsernameHash);
-            var passWord = TokenEncryptor.Decrypt(socialLogin.PasswordHash);
-
-            // --- START LOGIN SEQUENCE ---
-            await page.GotoAsync("https://x.com/i/flow/login", new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 30000 });
-
-            // Step 1: Enter username/email/phone
-            var usernameInput = page.Locator("input[name='text']");
-            await usernameInput.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 10000 });
-            await usernameInput.FillAsync(userName);
-            // Click the 'Next' button (using a more generic selector as text can be localized, but 'Next' is common)
-            await page.Locator("div[role='button']:has-text('Next')").ClickAsync();
-
-
-            // Step 2: Enter password
-            var passwordInput = page.Locator("input[name='password']");
-            await passwordInput.WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible, Timeout = 10000 });
-            await passwordInput.FillAsync(passWord);
-            await page.Locator("div[data-testid='LoginForm_Login_Button']").ClickAsync(); // Click the 'Log In' button
-
-            // Wait for navigation after login to the authenticated homepage/feed
-            await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions { Timeout = 30000 }); // Increased timeout
-
-            // Now that we are (hopefully) logged in, navigate to the target Twitter URL
-            await page.GotoAsync(searchDto.Url, new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 30000 });
-
-            // --- END LOGIN SEQUENCE ---
             return page;
         }
 

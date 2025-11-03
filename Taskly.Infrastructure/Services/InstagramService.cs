@@ -17,29 +17,27 @@ namespace Taskly.Infrastructure.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IAiService _aiService;
+        private readonly ICookieService _cookieService;
 
-        public InstagramService(ApplicationDbContext context, IAiService aiService)
+        public InstagramService(ApplicationDbContext context, IAiService aiService, ICookieService cookieService)
         {
             _context = context;
             _aiService = aiService;
+            _cookieService = cookieService;
         }
 
         public async Task SearchAsync(SearchDto searchDto)
         {
             if (string.IsNullOrWhiteSpace(searchDto.Keyword))
-            {
-                // Internal logging for invalid URL or missing Instagram login credentials.
                 return;
-            }
 
-            using var playwright = await Playwright.CreateAsync();
-            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = searchDto.PrivateMode });
-            var page = await browser.NewPageAsync();
+            IPage page = null;
+            IBrowser browser = null;
 
             try
             {
                 // Login to Instagram
-                page = await LoginAsync(page, searchDto);
+                (page, browser) = await _cookieService.LoadCookieOnPageAsync(searchDto.CookiePath, searchDto.PrivateMode);
 
                 // Go to Expore Page to search for hashtags or keywords
                 page = await GoToExplorePageAsync(page, searchDto);
@@ -88,7 +86,7 @@ namespace Taskly.Infrastructure.Services
                         // Only process and save if core data exists
                         if (!string.IsNullOrWhiteSpace(absolutePostUrl) && !string.IsNullOrWhiteSpace(imageUrl))
                         {
-                            var postDto = await GetAuthorPost(absolutePostUrl);
+                            var postDto = await GetAuthorPost(page, absolutePostUrl);
 
                             // Use AI service to check if the content (altText) is relevant
                             var isRelevant = await _aiService.CheckIfContentIsRelevantAsync(altText, searchDto.Query);
@@ -134,49 +132,6 @@ namespace Taskly.Infrastructure.Services
             }
         }
 
-        public async Task<IPage> LoginAsync(IPage page, SearchDto searchDto)
-        {
-            var socialLogin = await _context.SocialLogins.FirstOrDefaultAsync(x =>
-                   x.Platform == "Instagram");
-
-            if (socialLogin == null)
-            {
-                // Internal logging: "Instagram login credentials not found for UserId: {searchDto.UserId}"
-                return page; // Return current page state, login will likely fail
-            }
-
-            // --- START LOGIN SEQUENCE ---
-            await page.GotoAsync("https://www.instagram.com/accounts/login/", new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
-
-            await page.Locator("input[name='username']").FillAsync(socialLogin.Username);
-            await page.Locator("input[name='password']").FillAsync(socialLogin.Password);
-
-            // Click login button. Instagram's login button can sometimes be a generic submit.
-            // Using a more specific selector from your HTML: "button[type='submit']"
-            await page.Locator("button[type='submit']").ClickAsync();
-
-            await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions { Timeout = 20000 }); // Increased timeout for Instagram login
-
-            // Handle "Not Now" on "Save Your Login Info?" popup, if it appears
-            var notNowButton = page.Locator("button >> text='Not Now'").First;
-            if (await notNowButton.IsVisibleAsync(new LocatorIsVisibleOptions { Timeout = 5000 })) // Check if visible within 5s
-            {
-                await notNowButton.ClickAsync();
-                await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions { Timeout = 5000 });
-            }
-
-            // Handle "Turn on Notifications" "Not Now" button, if it appears after login
-            var notificationNotNowButton = page.Locator("button >> text='Not Now'").Nth(1); // Try the second 'Not Now' if first was for save login
-            if (await notificationNotNowButton.IsVisibleAsync(new LocatorIsVisibleOptions { Timeout = 5000 }))
-            {
-                await notificationNotNowButton.ClickAsync();
-                await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions { Timeout = 5000 });
-            }
-            // --- END LOGIN SEQUENCE ---
-
-            return page;
-        }
-
         public async Task<IPage> GoToExplorePageAsync(IPage page, SearchDto searchDto)
         {
             // Wait for the element to appear (recommended)
@@ -197,24 +152,19 @@ namespace Taskly.Infrastructure.Services
             return page;
         }
 
-        public async Task<PostContentDto> GetAuthorPost(string postUrl)
+        public async Task<PostContentDto> GetAuthorPost(IPage page, string postUrl)
         {
+
             PostContentDto postContentDto = new PostContentDto();
 
             if (string.IsNullOrWhiteSpace(postUrl))
                 return null;
 
-            using var playwright = await Playwright.CreateAsync();
-            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
-            {
-                Headless = true
-            });
-            
-            var page = await browser.NewPageAsync();
+            // Create a new tab (page)
+            var newPage = await page.Context.NewPageAsync();
 
             try
             {
-
                 await page.GotoAsync(postUrl, new PageGotoOptions
                 {
                     WaitUntil = WaitUntilState.DOMContentLoaded
@@ -267,13 +217,15 @@ namespace Taskly.Infrastructure.Services
                 postContentDto.ProfileUrl = $"https://www.instagram.com/{username}/";
                 postContentDto.PublishedDate = postDate.Value;
 
-                await browser.CloseAsync();
             }
             catch (Exception ex)
             {
-                // Internal logging for exceptions during post scraping
-                await browser.CloseAsync();
                 return null;
+            }
+            finally
+            {
+                // Close the tab to free resources
+                await newPage.CloseAsync();
             }
 
             return postContentDto;

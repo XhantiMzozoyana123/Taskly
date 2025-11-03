@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PostFlow Extension</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      width: 300px;
+      padding: 10px;
+    }
+    h1 {
+      font-size: 1.2em;
+      margin-bottom: 10px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    #leadCount {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>PostFlow Lead Generator</h1>
+  <div>
+    <label for="platform">Platform:</label>
+    <select id="platform">
+      <option value="Facebook">Facebook</option>
+      <option value="Instagram">Instagram</option>
+    </select>
+  </div>
+  <div>
+    <label for="query">Search Query:</label>
+    <input type="text" id="query" placeholder="e.g., 'digital marketing' group">
+  </div>
+  <div>
+    <label for="keywords">Keywords (comma-separated):</label>
+    <input type="text" id="keywords" placeholder="e.g., 'SEO, content, ads'">
+  </div>
+  <button id="startScraping">Start Scraping</button>
+  <button id="stopScraping">Stop Scraping</button>
+  <p>Leads Collected: <span id="leadCount">0</span></p>
+  <script src="../dist/popup/popup.js"></script>
+</body>
+</html>

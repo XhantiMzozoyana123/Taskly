@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "PostFlow Chrome Extension",
+  "version": "1.0",
+  "description": "Automate scraping, filtering, and lead generation from social media platforms.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.facebook.com/*",
+    "*://*.instagram.com/*"
+  ],
+  "background": {
+    "service_worker": "dist/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.facebook.com/*"],
+      "js": ["dist/contentScripts/FacebookContent.js"]
+    },
+    {
+      "matches": ["*://*.instagram.com/*"],
+      "js": ["dist/contentScripts/InstagramContent.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "images/icon16.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  }
+}

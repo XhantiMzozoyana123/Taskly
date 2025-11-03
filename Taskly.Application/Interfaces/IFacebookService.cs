@@ -11,15 +11,17 @@ namespace Taskly.Application.Interfaces
     public interface IFacebookService
     {
         Task SearchAsync(SearchDto searchDto);
-        
-        Task<IPage> LoginAsync(IPage page, SearchDto searchDto);
 
         Task<IPage> GoToFacebookGroupPage(IPage page, SearchDto searchDto);
 
         Task<IPage> SelectRandomFacebookGroup(IPage page, SearchDto searchDto);
 
+        Task<string> AuthorProfileUrlExchangedUrlAsync(IPage page, string partialUrl);
+
         Task<IPage> DirectMessagingAsync(IPage page, MessengerDto messengerDto);
 
         Task<List<string>> SelectAllFacebookFacebookGroups(IPage page, SearchDto searchDto);
+
+        // Removed: Task<string> GetPostDescriptionAsync(IPage page, string profileUrl);
     }
 }

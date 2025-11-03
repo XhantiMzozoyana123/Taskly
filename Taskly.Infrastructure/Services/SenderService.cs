@@ -1,10 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Playwright;
+using Serilog.Events;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Mail;
-using System.Text;
 using System.Threading.Tasks;
 using Taskly.Application.Dtos;
 using Taskly.Application.Interfaces;
@@ -15,15 +14,15 @@ namespace Taskly.Infrastructure.Services
 {
     public class SenderService : ISenderService
     {
-        private List<MessengerDto> messengerDtos = new List<MessengerDto>();
         private readonly ApplicationDbContext _context;
-
         private readonly IFacebookService _facebookService;
         private readonly IInstagramService _instagramService;
         private readonly ITwitterService _twitterService;
         private readonly ITikTokService _tikTokService;
-
         private readonly IAiService _aiService;
+        private readonly ICookieService _cookieService;
+
+        private readonly Random _random = new Random();
 
         public SenderService(
             ApplicationDbContext context,
@@ -31,7 +30,8 @@ namespace Taskly.Infrastructure.Services
             IInstagramService instagramService,
             ITwitterService twitterService,
             ITikTokService tikTokService,
-            IAiService aiService)
+            IAiService aiService,
+            ICookieService cookieService)
         {
             _context = context;
             _facebookService = facebookService;
@@ -39,107 +39,101 @@ namespace Taskly.Infrastructure.Services
             _twitterService = twitterService;
             _tikTokService = tikTokService;
             _aiService = aiService;
+            _cookieService = cookieService;
         }
 
-        public async Task AutomatedMessagingAsync(MessengerDto messengerDto)
+        public async Task MessagingSequenceAsync(MessengerDto messengerDto)
         {
-            if (string.IsNullOrWhiteSpace(messengerDto.Text))
-            {
+            if (string.IsNullOrWhiteSpace(messengerDto.Text) && !messengerDto.TextList.Any())
                 return;
-            }
 
-            using var playwright = await Playwright.CreateAsync();
-            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = messengerDto.PrivateMode });
-            var page = await browser.NewPageAsync();
+            IBrowser browser = null;
+            IPage page = null;
 
             try
             {
-                int abTestsNo = 0;
+                // 🔹 Load cookie accounts
+                var cookieAccounts = await _context.CookieFiles
+                    .OrderBy(x => x.Id)
+                    .ToListAsync();
 
-                if (messengerDto.AbTestRotation == true)
+                if (!cookieAccounts.Any())
+                    throw new Exception("No active cookie accounts found for rotation.");
+
+                // 🔹 Load leads
+                var leads = await _context.Leads
+                    .Where(x => x.Status == "New")
+                    .ToListAsync();
+
+                if (!leads.Any())
+                    return;
+
+                int accountIndex = 0;
+                var random = new Random();
+
+                for (int i = 0; i < leads.Count; i++)
                 {
-                    var emailer = _context.Leads.Where(x => x.Status == "New").ToList();
-
-                    await AbTestRotation(emailer, page);
-                }
-                else
-                {
-                    var text = messengerDto.Text;
-                    var query = _context.Leads.Where(x => x.Status == "New").ToList();
-
-                    foreach (var item in query)
+                    // 🔁 Account Rotation
+                    CookieFiles currentAccount;
+                    if (messengerDto.AccountRotation)
                     {
-                        var iceBreaker = await _context.Icebreakers.FirstAsync(x => x.LeadId == item.Id);
-
-                        if (iceBreaker == null)
-                        {
-                            iceBreaker = new Icebreakers()
-                            {
-                                Text = "Hello!",
-                                LeadId = item.Id
-                            };
-                        }
-
-                        string newText = text.Replace("[name]", item.Name)
-                                                        .Replace("[descr]", item.PostDescription)
-                                                        .Replace("[url]", item.PostUrl)
-                                                        .Replace("[date]", item.PostDate.ToString())
-                                                        .Replace("[icebreak]", iceBreaker.Text);
-
-                        MessengerDto messenger = new MessengerDto();
-
-                        messenger.Text = newText;
-                        messenger.Lead = item;
-
-                        await SendDM(messenger, page);
+                        currentAccount = cookieAccounts[accountIndex];
+                        accountIndex = (accountIndex + 1) % cookieAccounts.Count;
                     }
+                    else
+                    {
+                        // Use single account
+                        currentAccount = cookieAccounts.First();
+                    }
+
+                    (page, browser) = await _cookieService.LoadCookieOnPageAsync(currentAccount.FileName, messengerDto.PrivateMode);
+                    var lead = leads[i];
+
+                    // 🧠 Message Rotation
+                    string messageText;
+                    if (messengerDto.MessegeRotation && messengerDto.TextList.Any())
+                    {
+                        messageText = messengerDto.TextList[random.Next(messengerDto.TextList.Count)];
+                    }
+                    else
+                    {
+                        messageText = messengerDto.Text;
+                    }
+
+                    // Replace placeholders dynamically
+                    var iceBreaker = await _context.Icebreakers.FirstOrDefaultAsync(x => x.LeadId == lead.Id)
+                        ?? new Icebreakers { Text = "Hey!", LeadId = lead.Id };
+
+                    messageText = messageText
+                        .Replace("[name]", lead.Name)
+                        .Replace("[descr]", lead.PostDescription)
+                        .Replace("[url]", lead.PostUrl)
+                        .Replace("[date]", lead.PostDate.ToString())
+                        .Replace("[icebreak]", iceBreaker.Text);
+
+                    // Build new message
+                    var message = new MessengerDto
+                    {
+                        Text = messageText,
+                        Lead = lead
+                    };
+
+                    bool sent = await SendDM(message, page);
+                    await browser.CloseAsync();
+
+                    // Simulate human delay
+                    await Task.Delay(TimeSpan.FromSeconds(random.Next(3, 6)));
                 }
             }
             catch (Exception ex)
             {
-                // Internal logging for general exceptions.
-                throw ex;
+                Console.WriteLine($"[Error] {ex.Message}");
+                throw;
             }
             finally
             {
-                await browser.CloseAsync();
-            }
-        }
-
-
-        private async Task AbTestRotation(List<Leads> lead, IPage page) 
-        {
-            for (int i = 0; i <= lead.Count; i++)
-            {
-                Random random = new Random();
-                int r = random.Next(messengerDtos.Count);
-
-                var text = messengerDtos[r].Text;
-
-
-                var iceBreaker = await _context.Icebreakers.FirstAsync(x => x.LeadId == messengerDtos[r].Lead.Id);
-
-                if (iceBreaker == null)
-                {
-                    iceBreaker = new Icebreakers()
-                    {
-                        Text = "Hello!",
-                        LeadId = lead[i].Id
-                    };
-                }
-
-                string content = text.Replace("[name]", lead[i].Name)
-                                                        .Replace("[descr]", lead[i].PostDescription)
-                                                        .Replace("[url]", lead[i].PostUrl)
-                                                        .Replace("[date]", lead[i].PostDate.ToString())
-                                                        .Replace("[icebreak]", iceBreaker.Text);
-
-                MessengerDto messenger = new MessengerDto();
-
-                messenger.Text = content;
-                messenger.Lead = lead[i];
-
-                await SendDM(messenger, page);
+                if (browser != null)
+                    await browser.CloseAsync();
             }
         }
 
@@ -147,6 +141,10 @@ namespace Taskly.Infrastructure.Services
         {
             try
             {
+                // Random delay between messages
+                var delay = new Random().Next(15_000, 45_000); // 15–45 seconds
+                await Task.Delay(delay);
+
                 if (messengerDto.Lead.Status == "New")
                 {
                     switch (messengerDto.Lead.Platform.ToLower())
@@ -158,7 +156,7 @@ namespace Taskly.Infrastructure.Services
                             await _instagramService.DirectMessagingAsync(page, messengerDto);
                             break;
                         case "twitter":
-                            await _instagramService.DirectMessagingAsync(page, messengerDto);
+                            await _twitterService.DirectMessagingAsync(page, messengerDto);
                             break;
                         case "tiktok":
                             await _tikTokService.DirectMessagingAsync(page, messengerDto);
@@ -168,57 +166,22 @@ namespace Taskly.Infrastructure.Services
                     }
 
                     await UpdateLead(messengerDto.Lead);
+                    return true;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return false;
+                Console.WriteLine($"[SendDM Error] {ex.Message}");
             }
 
-            return true;
+            return false;
         }
 
         private async Task UpdateLead(Leads lead)
         {
-            lead.Status = "Contacted"; 
+            lead.Status = "Contacted";
             _context.Leads.Update(lead);
             await _context.SaveChangesAsync();
-        }
-
-        public async Task<bool> ManualMessagingAsync(MessengerDto messengerDto)
-        {
-            try
-            {
-                var leads = await _context.Leads.Where(x => x.Status == "New").ToListAsync();
-
-                foreach (var lead in leads)
-                {
-                    var content = await _aiService.GenerateDirectMessageAsync(new SearchDto() 
-                    {
-                        Keyword = lead.Keywords,
-                        Query = lead.Query
-                    });
-
-                    var message = new Messages()
-                    {
-                        LeadId = lead.Id,
-                        iceBreakerId = await _context.Icebreakers
-                                    .Select(i => (int?)i.Id)
-                                    .FirstOrDefaultAsync() ?? 0,
-                        Text = content,
-                        Status = "New"
-                    };
-
-                    await _context.Messages.AddAsync(message);
-                    await _context.SaveChangesAsync();
-                }
-            }
-            catch(Exception)
-            {
-                return false;
-            }
-
-            return true;    
         }
     }
 }

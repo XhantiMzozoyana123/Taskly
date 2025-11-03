@@ -16,6 +16,8 @@ namespace Taskly.Application.Dtos
 
         public string Platform { get; set; } = string.Empty; // Social media platform (e.g., Facebook, Instagram)
 
+        public string CookiePath { get; set; } = string.Empty; // Path to the cookie file for authentication
+
         public int PageNumber { get; set; } = 1; // For pagination, default to first page
 
         public bool PrivateMode { get; set; } = false; // Whether to include private content if permissions allow

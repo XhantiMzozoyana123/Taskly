@@ -14,8 +14,6 @@ namespace Taskly.Application.Interfaces
     {
         Task SearchAsync(SearchDto searchDto);
 
-        Task<IPage> LoginAsync(IPage page, SearchDto searchDto);
-
         Task ScrapeSocialLinks(IPage page, Leads lead, string profileUrl);
 
         Task<IPage> FindSubredditsUrl(IPage page, SearchDto searchDto);
