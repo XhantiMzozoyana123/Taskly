@@ -41,15 +41,29 @@
             lblQuery = new Label();
             txtKeywords = new TextBox();
             lblKeywords = new Label();
-            grpCookie = new GroupBox();
-            cboUsername = new ComboBox();
             rtxtMessage = new RichTextBox();
             menuStrip1 = new MenuStrip();
             dataControlsToolStripMenuItem = new ToolStripMenuItem();
-            cookiesToolStripMenuItem = new ToolStripMenuItem();
-            serviceWorkersToolStripMenuItem = new ToolStripMenuItem();
+            dataControlsToolStripMenuItem1 = new ToolStripMenuItem();
+            campaignsToolStripMenuItem = new ToolStripMenuItem();
+            generatedToolStripMenuItem = new ToolStripMenuItem();
+            icebreakersToolStripMenuItem = new ToolStripMenuItem();
+            customMessagesToolStripMenuItem = new ToolStripMenuItem();
+            contentToolStripMenuItem = new ToolStripMenuItem();
+            templatesToolStripMenuItem1 = new ToolStripMenuItem();
+            customMessagesToolStripMenuItem1 = new ToolStripMenuItem();
+            customMessagesToolStripMenuItem2 = new ToolStripMenuItem();
+            cookiesToolStripMenuItem1 = new ToolStripMenuItem();
+            campaignToolStripMenuItem = new ToolStripMenuItem();
+            campaignToolStripMenuItem1 = new ToolStripMenuItem();
+            sequencesToolStripMenuItem = new ToolStripMenuItem();
+            messagesToolStripMenuItem = new ToolStripMenuItem();
+            domainsToolStripMenuItem = new ToolStripMenuItem();
+            integrationsToolStripMenuItem = new ToolStripMenuItem();
+            googleAIGeminiToolStripMenuItem = new ToolStripMenuItem();
+            lMStudioToolStripMenuItem = new ToolStripMenuItem();
+            settingsToolStripMenuItem = new ToolStripMenuItem();
             button1 = new Button();
-            grpSumary = new GroupBox();
             lblContactedLeads = new Label();
             txtContactedLeads = new TextBox();
             lblUnique = new Label();
@@ -64,10 +78,13 @@
             btnAddGroup = new Button();
             lblMessagingGroup = new Label();
             cboMessagingGroup = new ComboBox();
+            lstLogs = new ListBox();
+            btnClearLogs = new Button();
+            lblTemplates = new Label();
+            cboTemplates = new ComboBox();
+            btnRefresh = new Button();
             grpSearchInput.SuspendLayout();
-            grpCookie.SuspendLayout();
             menuStrip1.SuspendLayout();
-            grpSumary.SuspendLayout();
             grpDM.SuspendLayout();
             SuspendLayout();
             // 
@@ -88,7 +105,7 @@
             grpSearchInput.Controls.Add(lblKeywords);
             grpSearchInput.Location = new Point(12, 38);
             grpSearchInput.Name = "grpSearchInput";
-            grpSearchInput.Size = new Size(1124, 329);
+            grpSearchInput.Size = new Size(1124, 279);
             grpSearchInput.TabIndex = 0;
             grpSearchInput.TabStop = false;
             grpSearchInput.Text = "Search Input";
@@ -97,7 +114,7 @@
             // 
             ckMultiPlatform.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             ckMultiPlatform.AutoSize = true;
-            ckMultiPlatform.Location = new Point(912, 203);
+            ckMultiPlatform.Location = new Point(912, 165);
             ckMultiPlatform.Name = "ckMultiPlatform";
             ckMultiPlatform.Size = new Size(116, 24);
             ckMultiPlatform.TabIndex = 18;
@@ -131,6 +148,7 @@
             btnBulkSearch.TabIndex = 2;
             btnBulkSearch.Text = "Bulk Search";
             btnBulkSearch.UseVisualStyleBackColor = true;
+            btnBulkSearch.Click += btnBulkSearch_Click;
             // 
             // txtPages
             // 
@@ -173,7 +191,7 @@
             // 
             ckPrivateMode.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             ckPrivateMode.AutoSize = true;
-            ckPrivateMode.Location = new Point(912, 173);
+            ckPrivateMode.Location = new Point(912, 195);
             ckPrivateMode.Name = "ckPrivateMode";
             ckPrivateMode.Size = new Size(119, 24);
             ckPrivateMode.TabIndex = 10;
@@ -206,39 +224,19 @@
             lblKeywords.TabIndex = 0;
             lblKeywords.Text = "Keywords";
             // 
-            // grpCookie
-            // 
-            grpCookie.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            grpCookie.Controls.Add(cboUsername);
-            grpCookie.Location = new Point(12, 373);
-            grpCookie.Name = "grpCookie";
-            grpCookie.Size = new Size(388, 90);
-            grpCookie.TabIndex = 4;
-            grpCookie.TabStop = false;
-            grpCookie.Text = "Selected Cookie";
-            // 
-            // cboUsername
-            // 
-            cboUsername.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            cboUsername.FormattingEnabled = true;
-            cboUsername.Location = new Point(23, 38);
-            cboUsername.Name = "cboUsername";
-            cboUsername.Size = new Size(350, 28);
-            cboUsername.TabIndex = 0;
-            // 
             // rtxtMessage
             // 
             rtxtMessage.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             rtxtMessage.Location = new Point(17, 29);
             rtxtMessage.Name = "rtxtMessage";
-            rtxtMessage.Size = new Size(698, 178);
+            rtxtMessage.Size = new Size(620, 238);
             rtxtMessage.TabIndex = 5;
             rtxtMessage.Text = "";
             // 
             // menuStrip1
             // 
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { dataControlsToolStripMenuItem, cookiesToolStripMenuItem, serviceWorkersToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { dataControlsToolStripMenuItem, contentToolStripMenuItem, cookiesToolStripMenuItem1, campaignToolStripMenuItem, domainsToolStripMenuItem, integrationsToolStripMenuItem, settingsToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(1148, 28);
@@ -247,28 +245,142 @@
             // 
             // dataControlsToolStripMenuItem
             // 
+            dataControlsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { dataControlsToolStripMenuItem1, campaignsToolStripMenuItem, generatedToolStripMenuItem });
             dataControlsToolStripMenuItem.Name = "dataControlsToolStripMenuItem";
             dataControlsToolStripMenuItem.Size = new Size(114, 24);
             dataControlsToolStripMenuItem.Text = "Data Controls";
             dataControlsToolStripMenuItem.Click += dataControlsToolStripMenuItem_Click;
             // 
-            // cookiesToolStripMenuItem
+            // dataControlsToolStripMenuItem1
             // 
-            cookiesToolStripMenuItem.Name = "cookiesToolStripMenuItem";
-            cookiesToolStripMenuItem.Size = new Size(75, 24);
-            cookiesToolStripMenuItem.Text = "Cookies";
-            cookiesToolStripMenuItem.Click += cookiesToolStripMenuItem_Click;
+            dataControlsToolStripMenuItem1.Name = "dataControlsToolStripMenuItem1";
+            dataControlsToolStripMenuItem1.Size = new Size(197, 26);
+            dataControlsToolStripMenuItem1.Text = "Collected Leads";
+            dataControlsToolStripMenuItem1.Click += dataControlsToolStripMenuItem1_Click;
             // 
-            // serviceWorkersToolStripMenuItem
+            // campaignsToolStripMenuItem
             // 
-            serviceWorkersToolStripMenuItem.Name = "serviceWorkersToolStripMenuItem";
-            serviceWorkersToolStripMenuItem.Size = new Size(127, 24);
-            serviceWorkersToolStripMenuItem.Text = "Service Workers";
+            campaignsToolStripMenuItem.Name = "campaignsToolStripMenuItem";
+            campaignsToolStripMenuItem.Size = new Size(197, 26);
+            campaignsToolStripMenuItem.Text = "Campaigns";
+            // 
+            // generatedToolStripMenuItem
+            // 
+            generatedToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { icebreakersToolStripMenuItem, customMessagesToolStripMenuItem });
+            generatedToolStripMenuItem.Name = "generatedToolStripMenuItem";
+            generatedToolStripMenuItem.Size = new Size(197, 26);
+            generatedToolStripMenuItem.Text = "Generated Data";
+            // 
+            // icebreakersToolStripMenuItem
+            // 
+            icebreakersToolStripMenuItem.Name = "icebreakersToolStripMenuItem";
+            icebreakersToolStripMenuItem.Size = new Size(210, 26);
+            icebreakersToolStripMenuItem.Text = "Icebreakers";
+            // 
+            // customMessagesToolStripMenuItem
+            // 
+            customMessagesToolStripMenuItem.Name = "customMessagesToolStripMenuItem";
+            customMessagesToolStripMenuItem.Size = new Size(210, 26);
+            customMessagesToolStripMenuItem.Text = "Custom Messages";
+            // 
+            // contentToolStripMenuItem
+            // 
+            contentToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { templatesToolStripMenuItem1, customMessagesToolStripMenuItem1, customMessagesToolStripMenuItem2 });
+            contentToolStripMenuItem.Name = "contentToolStripMenuItem";
+            contentToolStripMenuItem.Size = new Size(75, 24);
+            contentToolStripMenuItem.Text = "Content";
+            // 
+            // templatesToolStripMenuItem1
+            // 
+            templatesToolStripMenuItem1.Name = "templatesToolStripMenuItem1";
+            templatesToolStripMenuItem1.Size = new Size(210, 26);
+            templatesToolStripMenuItem1.Text = "Templates";
+            templatesToolStripMenuItem1.Click += templatesToolStripMenuItem1_Click;
+            // 
+            // customMessagesToolStripMenuItem1
+            // 
+            customMessagesToolStripMenuItem1.Name = "customMessagesToolStripMenuItem1";
+            customMessagesToolStripMenuItem1.Size = new Size(210, 26);
+            customMessagesToolStripMenuItem1.Text = "Icebreakers";
+            // 
+            // customMessagesToolStripMenuItem2
+            // 
+            customMessagesToolStripMenuItem2.Name = "customMessagesToolStripMenuItem2";
+            customMessagesToolStripMenuItem2.Size = new Size(210, 26);
+            customMessagesToolStripMenuItem2.Text = "Custom Messages";
+            customMessagesToolStripMenuItem2.Click += customMessagesToolStripMenuItem2_Click;
+            // 
+            // cookiesToolStripMenuItem1
+            // 
+            cookiesToolStripMenuItem1.Name = "cookiesToolStripMenuItem1";
+            cookiesToolStripMenuItem1.Size = new Size(75, 24);
+            cookiesToolStripMenuItem1.Text = "Cookies";
+            cookiesToolStripMenuItem1.Click += cookiesToolStripMenuItem1_Click;
+            // 
+            // campaignToolStripMenuItem
+            // 
+            campaignToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { campaignToolStripMenuItem1, sequencesToolStripMenuItem, messagesToolStripMenuItem });
+            campaignToolStripMenuItem.Name = "campaignToolStripMenuItem";
+            campaignToolStripMenuItem.Size = new Size(97, 24);
+            campaignToolStripMenuItem.Text = "Campaigns";
+            // 
+            // campaignToolStripMenuItem1
+            // 
+            campaignToolStripMenuItem1.Name = "campaignToolStripMenuItem1";
+            campaignToolStripMenuItem1.Size = new Size(234, 26);
+            campaignToolStripMenuItem1.Text = "Campaign";
+            campaignToolStripMenuItem1.Click += campaignToolStripMenuItem1_Click;
+            // 
+            // sequencesToolStripMenuItem
+            // 
+            sequencesToolStripMenuItem.Name = "sequencesToolStripMenuItem";
+            sequencesToolStripMenuItem.Size = new Size(234, 26);
+            sequencesToolStripMenuItem.Text = "Campaign Sequences";
+            // 
+            // messagesToolStripMenuItem
+            // 
+            messagesToolStripMenuItem.Name = "messagesToolStripMenuItem";
+            messagesToolStripMenuItem.Size = new Size(234, 26);
+            messagesToolStripMenuItem.Text = "Campaign Messages";
+            // 
+            // domainsToolStripMenuItem
+            // 
+            domainsToolStripMenuItem.Name = "domainsToolStripMenuItem";
+            domainsToolStripMenuItem.Size = new Size(82, 24);
+            domainsToolStripMenuItem.Text = "Domains";
+            domainsToolStripMenuItem.Click += domainsToolStripMenuItem_Click;
+            // 
+            // integrationsToolStripMenuItem
+            // 
+            integrationsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { googleAIGeminiToolStripMenuItem, lMStudioToolStripMenuItem });
+            integrationsToolStripMenuItem.Name = "integrationsToolStripMenuItem";
+            integrationsToolStripMenuItem.Size = new Size(102, 24);
+            integrationsToolStripMenuItem.Text = "Integrations";
+            // 
+            // googleAIGeminiToolStripMenuItem
+            // 
+            googleAIGeminiToolStripMenuItem.Name = "googleAIGeminiToolStripMenuItem";
+            googleAIGeminiToolStripMenuItem.Size = new Size(220, 26);
+            googleAIGeminiToolStripMenuItem.Text = "Google AI (Gemini)";
+            googleAIGeminiToolStripMenuItem.Click += googleAIGeminiToolStripMenuItem_Click;
+            // 
+            // lMStudioToolStripMenuItem
+            // 
+            lMStudioToolStripMenuItem.Name = "lMStudioToolStripMenuItem";
+            lMStudioToolStripMenuItem.Size = new Size(220, 26);
+            lMStudioToolStripMenuItem.Text = "LM Studio";
+            // 
+            // settingsToolStripMenuItem
+            // 
+            settingsToolStripMenuItem.Name = "settingsToolStripMenuItem";
+            settingsToolStripMenuItem.Size = new Size(76, 24);
+            settingsToolStripMenuItem.Text = "Settings";
+            settingsToolStripMenuItem.Click += settingsToolStripMenuItem_Click;
             // 
             // button1
             // 
             button1.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            button1.Location = new Point(983, 634);
+            button1.Location = new Point(983, 740);
             button1.Name = "button1";
             button1.Size = new Size(153, 47);
             button1.TabIndex = 7;
@@ -276,26 +388,11 @@
             button1.UseVisualStyleBackColor = true;
             button1.Click += button1_Click;
             // 
-            // grpSumary
-            // 
-            grpSumary.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            grpSumary.Controls.Add(lblContactedLeads);
-            grpSumary.Controls.Add(txtContactedLeads);
-            grpSumary.Controls.Add(lblUnique);
-            grpSumary.Controls.Add(txtUniqueLeads);
-            grpSumary.Controls.Add(lblCollectLeads);
-            grpSumary.Controls.Add(txtCollectedLeads);
-            grpSumary.Location = new Point(12, 469);
-            grpSumary.Name = "grpSumary";
-            grpSumary.Size = new Size(388, 159);
-            grpSumary.TabIndex = 5;
-            grpSumary.TabStop = false;
-            grpSumary.Text = "Summary";
-            // 
             // lblContactedLeads
             // 
+            lblContactedLeads.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             lblContactedLeads.AutoSize = true;
-            lblContactedLeads.Location = new Point(23, 113);
+            lblContactedLeads.Location = new Point(21, 674);
             lblContactedLeads.Name = "lblContactedLeads";
             lblContactedLeads.Size = new Size(119, 20);
             lblContactedLeads.TabIndex = 23;
@@ -303,16 +400,18 @@
             // 
             // txtContactedLeads
             // 
-            txtContactedLeads.Location = new Point(166, 110);
+            txtContactedLeads.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            txtContactedLeads.Location = new Point(164, 671);
             txtContactedLeads.Name = "txtContactedLeads";
             txtContactedLeads.ReadOnly = true;
-            txtContactedLeads.Size = new Size(207, 27);
+            txtContactedLeads.Size = new Size(303, 27);
             txtContactedLeads.TabIndex = 22;
             // 
             // lblUnique
             // 
+            lblUnique.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             lblUnique.AutoSize = true;
-            lblUnique.Location = new Point(23, 80);
+            lblUnique.Location = new Point(21, 641);
             lblUnique.Name = "lblUnique";
             lblUnique.Size = new Size(98, 20);
             lblUnique.TabIndex = 21;
@@ -320,16 +419,18 @@
             // 
             // txtUniqueLeads
             // 
-            txtUniqueLeads.Location = new Point(166, 77);
+            txtUniqueLeads.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            txtUniqueLeads.Location = new Point(164, 638);
             txtUniqueLeads.Name = "txtUniqueLeads";
             txtUniqueLeads.ReadOnly = true;
-            txtUniqueLeads.Size = new Size(207, 27);
+            txtUniqueLeads.Size = new Size(303, 27);
             txtUniqueLeads.TabIndex = 20;
             // 
             // lblCollectLeads
             // 
+            lblCollectLeads.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             lblCollectLeads.AutoSize = true;
-            lblCollectLeads.Location = new Point(23, 47);
+            lblCollectLeads.Location = new Point(21, 608);
             lblCollectLeads.Name = "lblCollectLeads";
             lblCollectLeads.Size = new Size(114, 20);
             lblCollectLeads.TabIndex = 19;
@@ -337,17 +438,18 @@
             // 
             // txtCollectedLeads
             // 
-            txtCollectedLeads.Location = new Point(166, 44);
+            txtCollectedLeads.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            txtCollectedLeads.Location = new Point(164, 605);
             txtCollectedLeads.Name = "txtCollectedLeads";
             txtCollectedLeads.ReadOnly = true;
-            txtCollectedLeads.Size = new Size(207, 27);
+            txtCollectedLeads.Size = new Size(303, 27);
             txtCollectedLeads.TabIndex = 18;
             // 
             // ckMessageRotate
             // 
             ckMessageRotate.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             ckMessageRotate.AutoSize = true;
-            ckMessageRotate.Location = new Point(575, 646);
+            ckMessageRotate.Location = new Point(17, 273);
             ckMessageRotate.Name = "ckMessageRotate";
             ckMessageRotate.Size = new Size(163, 24);
             ckMessageRotate.TabIndex = 18;
@@ -357,7 +459,7 @@
             // btnDataControls
             // 
             btnDataControls.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnDataControls.Location = new Point(12, 634);
+            btnDataControls.Location = new Point(12, 740);
             btnDataControls.Name = "btnDataControls";
             btnDataControls.Size = new Size(153, 47);
             btnDataControls.TabIndex = 19;
@@ -369,32 +471,29 @@
             // 
             ckAccountRotate.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             ckAccountRotate.AutoSize = true;
-            ckAccountRotate.Location = new Point(406, 646);
+            ckAccountRotate.Location = new Point(186, 273);
             ckAccountRotate.Name = "ckAccountRotate";
-            ckAccountRotate.Size = new Size(146, 24);
+            ckAccountRotate.Size = new Size(138, 24);
             ckAccountRotate.TabIndex = 20;
-            ckAccountRotate.Text = "Account Rotation";
+            ckAccountRotate.Text = "Cookie Rotation";
             ckAccountRotate.UseVisualStyleBackColor = true;
             // 
             // grpDM
             // 
             grpDM.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            grpDM.Controls.Add(btnRemoveGroup);
-            grpDM.Controls.Add(btnAddGroup);
-            grpDM.Controls.Add(lblMessagingGroup);
-            grpDM.Controls.Add(cboMessagingGroup);
             grpDM.Controls.Add(rtxtMessage);
-            grpDM.Location = new Point(406, 373);
+            grpDM.Controls.Add(ckAccountRotate);
+            grpDM.Controls.Add(ckMessageRotate);
+            grpDM.Location = new Point(484, 431);
             grpDM.Name = "grpDM";
-            grpDM.Size = new Size(730, 255);
+            grpDM.Size = new Size(652, 303);
             grpDM.TabIndex = 21;
             grpDM.TabStop = false;
             grpDM.Text = "Direct Message";
             // 
             // btnRemoveGroup
             // 
-            btnRemoveGroup.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            btnRemoveGroup.Location = new Point(616, 212);
+            btnRemoveGroup.Location = new Point(368, 509);
             btnRemoveGroup.Name = "btnRemoveGroup";
             btnRemoveGroup.Size = new Size(99, 28);
             btnRemoveGroup.TabIndex = 23;
@@ -404,8 +503,7 @@
             // 
             // btnAddGroup
             // 
-            btnAddGroup.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            btnAddGroup.Location = new Point(511, 212);
+            btnAddGroup.Location = new Point(263, 509);
             btnAddGroup.Name = "btnAddGroup";
             btnAddGroup.Size = new Size(99, 28);
             btnAddGroup.TabIndex = 22;
@@ -415,9 +513,8 @@
             // 
             // lblMessagingGroup
             // 
-            lblMessagingGroup.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             lblMessagingGroup.AutoSize = true;
-            lblMessagingGroup.Location = new Point(17, 216);
+            lblMessagingGroup.Location = new Point(18, 478);
             lblMessagingGroup.Name = "lblMessagingGroup";
             lblMessagingGroup.Size = new Size(118, 20);
             lblMessagingGroup.TabIndex = 20;
@@ -425,27 +522,85 @@
             // 
             // cboMessagingGroup
             // 
-            cboMessagingGroup.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             cboMessagingGroup.FormattingEnabled = true;
-            cboMessagingGroup.Location = new Point(141, 213);
+            cboMessagingGroup.Location = new Point(164, 475);
             cboMessagingGroup.Name = "cboMessagingGroup";
-            cboMessagingGroup.Size = new Size(364, 28);
+            cboMessagingGroup.Size = new Size(303, 28);
             cboMessagingGroup.TabIndex = 1;
             cboMessagingGroup.SelectedIndexChanged += cboMessagingGroup_SelectedIndexChanged;
+            // 
+            // lstLogs
+            // 
+            lstLogs.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            lstLogs.FormattingEnabled = true;
+            lstLogs.Location = new Point(12, 323);
+            lstLogs.Name = "lstLogs";
+            lstLogs.Size = new Size(930, 104);
+            lstLogs.TabIndex = 25;
+            // 
+            // btnClearLogs
+            // 
+            btnClearLogs.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnClearLogs.Location = new Point(948, 321);
+            btnClearLogs.Name = "btnClearLogs";
+            btnClearLogs.Size = new Size(188, 104);
+            btnClearLogs.TabIndex = 19;
+            btnClearLogs.Text = "Clear Logs";
+            btnClearLogs.UseVisualStyleBackColor = true;
+            btnClearLogs.Click += btnClearLogs_Click;
+            // 
+            // lblTemplates
+            // 
+            lblTemplates.AutoSize = true;
+            lblTemplates.Location = new Point(18, 444);
+            lblTemplates.Name = "lblTemplates";
+            lblTemplates.Size = new Size(77, 20);
+            lblTemplates.TabIndex = 27;
+            lblTemplates.Text = "Templates";
+            // 
+            // cboTemplates
+            // 
+            cboTemplates.FormattingEnabled = true;
+            cboTemplates.Location = new Point(164, 441);
+            cboTemplates.Name = "cboTemplates";
+            cboTemplates.Size = new Size(303, 28);
+            cboTemplates.TabIndex = 26;
+            // 
+            // btnRefresh
+            // 
+            btnRefresh.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnRefresh.Location = new Point(368, 706);
+            btnRefresh.Name = "btnRefresh";
+            btnRefresh.Size = new Size(99, 28);
+            btnRefresh.TabIndex = 28;
+            btnRefresh.Text = "Refresh";
+            btnRefresh.UseVisualStyleBackColor = true;
+            btnRefresh.Click += btnRefresh_Click;
             // 
             // Taskly
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.White;
-            ClientSize = new Size(1148, 693);
+            ClientSize = new Size(1148, 799);
+            Controls.Add(btnRefresh);
+            Controls.Add(lblTemplates);
+            Controls.Add(cboTemplates);
+            Controls.Add(lblContactedLeads);
+            Controls.Add(btnClearLogs);
+            Controls.Add(txtContactedLeads);
+            Controls.Add(btnRemoveGroup);
+            Controls.Add(lblUnique);
+            Controls.Add(txtUniqueLeads);
+            Controls.Add(lblCollectLeads);
+            Controls.Add(btnAddGroup);
+            Controls.Add(txtCollectedLeads);
+            Controls.Add(lstLogs);
             Controls.Add(grpDM);
-            Controls.Add(ckAccountRotate);
             Controls.Add(btnDataControls);
-            Controls.Add(ckMessageRotate);
-            Controls.Add(grpSumary);
+            Controls.Add(lblMessagingGroup);
+            Controls.Add(cboMessagingGroup);
             Controls.Add(button1);
-            Controls.Add(grpCookie);
             Controls.Add(grpSearchInput);
             Controls.Add(menuStrip1);
             MainMenuStrip = menuStrip1;
@@ -454,11 +609,8 @@
             Load += Taskly_Load;
             grpSearchInput.ResumeLayout(false);
             grpSearchInput.PerformLayout();
-            grpCookie.ResumeLayout(false);
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
-            grpSumary.ResumeLayout(false);
-            grpSumary.PerformLayout();
             grpDM.ResumeLayout(false);
             grpDM.PerformLayout();
             ResumeLayout(false);
@@ -473,7 +625,6 @@
         private Label lblKeywords;
         private Button btnSearch;
         private Button btnBulkSearch;
-        private GroupBox grpCookie;
         private RichTextBox rtxtMessage;
         private TextBox txtPages;
         private Label lblPages;
@@ -482,10 +633,6 @@
         private MenuStrip menuStrip1;
         private ToolStripMenuItem dataControlsToolStripMenuItem;
         private Button button1;
-        private GroupBox grpSumary;
-        private ComboBox cboUsername;
-        private ToolStripMenuItem cookiesToolStripMenuItem;
-        private ToolStripMenuItem serviceWorkersToolStripMenuItem;
         private ComboBox cboCookie;
         private Label lblCookie;
         private CheckBox ckMessageRotate;
@@ -503,5 +650,29 @@
         private Button btnRemoveGroup;
         private Button btnAddGroup;
         private CheckBox ckMultiPlatform;
+        private ListBox lstLogs;
+        private Button btnClearLogs;
+        private Label lblTemplates;
+        private ComboBox cboTemplates;
+        private Button btnRefresh;
+        private ToolStripMenuItem settingsToolStripMenuItem;
+        private ToolStripMenuItem contentToolStripMenuItem;
+        private ToolStripMenuItem templatesToolStripMenuItem1;
+        private ToolStripMenuItem customMessagesToolStripMenuItem1;
+        private ToolStripMenuItem customMessagesToolStripMenuItem2;
+        private ToolStripMenuItem dataControlsToolStripMenuItem1;
+        private ToolStripMenuItem generatedToolStripMenuItem;
+        private ToolStripMenuItem icebreakersToolStripMenuItem;
+        private ToolStripMenuItem customMessagesToolStripMenuItem;
+        private ToolStripMenuItem cookiesToolStripMenuItem1;
+        private ToolStripMenuItem domainsToolStripMenuItem;
+        private ToolStripMenuItem integrationsToolStripMenuItem;
+        private ToolStripMenuItem googleAIGeminiToolStripMenuItem;
+        private ToolStripMenuItem lMStudioToolStripMenuItem;
+        private ToolStripMenuItem campaignsToolStripMenuItem;
+        private ToolStripMenuItem campaignToolStripMenuItem;
+        private ToolStripMenuItem campaignToolStripMenuItem1;
+        private ToolStripMenuItem sequencesToolStripMenuItem;
+        private ToolStripMenuItem messagesToolStripMenuItem;
     }
 }

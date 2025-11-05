@@ -18,27 +18,32 @@ namespace Taskly.Infrastructure.Services
         private readonly ApplicationDbContext _context;
         private readonly IAiService _aiService;
         private readonly ICookieService _cookieService;
-        
-        public TikTokService(ApplicationDbContext context, IAiService aiService, ICookieService cookieService)
+        private readonly IUiLogger _logger; // Injecting IUiLogger
+
+        public TikTokService(ApplicationDbContext context, IAiService aiService, ICookieService cookieService, IUiLogger logger)
         {
             _context = context;
             _aiService = aiService;
             _cookieService = cookieService;
+            _logger = logger; // Initializing the logger
         }
 
         public async Task<IPage> DirectMessagingAsync(IPage page, MessengerDto messengerDto)
         {
+            _logger.LogInfo($"Navigating to target user's TikTok profile for direct messaging: {messengerDto.Lead.ProfileUrl}");
             // Navigate to the target user's profile
             await page.GotoAsync(messengerDto.Lead.ProfileUrl, new PageGotoOptions
             {
                 WaitUntil = WaitUntilState.DOMContentLoaded,
                 Timeout = 30000
             });
+            _logger.LogInfo("Navigated to TikTok profile.");
 
             // --- STEP 1: Click the "Message" button ---
             var messageButton = page.Locator("[data-e2e='message-button']");
             if (await messageButton.CountAsync() == 0)
             {
+                _logger.LogWarning($"Message button not found for profile: {messengerDto.Lead.ProfileUrl}. DMs might be closed or selector changed.");
                 return page; // Skip if user’s DMs are closed
             }
 
@@ -48,6 +53,7 @@ namespace Taskly.Infrastructure.Services
                 Timeout = 10000
             });
             await messageButton.First.ClickAsync();
+            _logger.LogInfo("Clicked 'Message' button.");
 
             // --- STEP 2: Wait for the message input box ---
             var messageInput = page.Locator("div[contenteditable='true'].public-DraftEditor-content");
@@ -56,54 +62,73 @@ namespace Taskly.Infrastructure.Services
                 State = WaitForSelectorState.Visible,
                 Timeout = 10000
             });
+            _logger.LogInfo("Message input box located.");
 
             // --- STEP 3: Type and send message ---
             await messageInput.ClickAsync();
             await messageInput.FillAsync(messengerDto.Text); // FillAsync works on editable divs
+            _logger.LogInfo($"Typed message into DM input (first 50 chars): '{messengerDto.Text.Substring(0, Math.Min(messengerDto.Text.Length, 50))}...'");
 
             // Some platforms require Enter key to send
             await page.Keyboard.PressAsync("Enter");
+            _logger.LogInfo("Pressed Enter to send message.");
 
             // --- STEP 4: Wait to ensure the message is sent ---
             await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new PageWaitForLoadStateOptions
             {
                 Timeout = 10000
             });
+            _logger.LogInfo("Direct message sent, waiting for network idle.");
 
             return page;
         }
 
         public async Task<string> GetVideoDescription(IPage page)
         {
-            // Locate the element by its data-e2e attribute and get its text content
+            _logger.LogInfo("Attempting to get video description.");
             var videoDescriptionElement = page.Locator("[data-e2e='video-desc']");
             string videoDescription = await videoDescriptionElement.TextContentAsync();
 
+            if (!string.IsNullOrWhiteSpace(videoDescription))
+            {
+                _logger.LogInfo($"Extracted video description (first 100 chars): {videoDescription.Substring(0, Math.Min(videoDescription.Length, 100))}");
+            }
+            else
+            {
+                _logger.LogWarning("Video description element found, but content was empty or null.");
+            }
             return videoDescription?.Trim() ?? string.Empty;
         }
 
         public async Task<IPage> GoToDiscoveryPageAsync(IPage page, SearchDto searchDto)
         {
-            // Go to X Explore page
-            await page.GotoAsync("https://www.tiktok.com/en/", new PageGotoOptions
+            _logger.LogInfo($"Navigating to TikTok Discovery page for keyword: '{searchDto.Keyword}'");
+            // Go to Tik-Tok Discovery page
+            await page.GotoAsync($"https://www.tiktok.com/search?q={searchDto.Keyword.Replace(" ", "+")}", new PageGotoOptions
             {
-                WaitUntil = WaitUntilState.DOMContentLoaded,
-                Timeout = 30000
+                WaitUntil = WaitUntilState.DOMContentLoaded
             });
+            _logger.LogInfo("Successfully navigated to TikTok Discovery page.");
+            await Task.Delay(5000);
 
-            // Option 1: Using data-e2e attribute
-            await page.ClickAsync("[data-e2e='nav-search']");
+            if (await page.Locator("button:has-text(\"Try again\")").IsVisibleAsync())
+            {
+                _logger.LogWarning("Found 'Try again' button, attempting to click it.");
+                await page.Locator("button:has-text(\"Try again\")").ClickAsync();
+                _logger.LogInfo("'Try again' button clicked.");
+            }
 
-            var searchInput = await page.WaitForSelectorAsync("[data-e2e='search-user-input']");
+            // Wait for the video container to appear
+            await page.WaitForSelectorAsync("a.css-143ggr2-5e6d46e3--AVideoContainer");
+            _logger.LogInfo("First video container found on the discovery page.");
 
-            // Type your search query
-            await searchInput.FillAsync(searchDto.Keyword);
+            // Click the video
+            await page.ClickAsync("a.css-143ggr2-5e6d46e3--AVideoContainer");
+            _logger.LogInfo("Clicked the first video container.");
 
-            // Click into it (optional, but sometimes needed)
-            await searchInput.ClickAsync();
-
-            // Wait for the results page to load
-            await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+            // Optional: wait a bit to see the result
+            await page.WaitForTimeoutAsync(9000);
+            _logger.LogInfo("Waited 9 seconds after clicking the video.");
 
             return page;
         }
@@ -111,158 +136,148 @@ namespace Taskly.Infrastructure.Services
         public async Task SearchAsync(SearchDto searchDto)
         {
             if (string.IsNullOrWhiteSpace(searchDto.Keyword))
+            {
+                _logger.LogWarning("Search keyword is empty or null, skipping TikTok search operation.");
                 return;
+            }
 
             IPage page = null;
             IBrowser browser = null;
 
             try
             {
+                _logger.LogInfo($"Attempting to log in and navigate to TikTok for keyword: '{searchDto.Keyword}'");
                 // Login to Tik-Tok
                 (page, browser) = await _cookieService.LoadCookieOnPageAsync(searchDto.CookiePath, searchDto.PrivateMode);
+                _logger.LogInfo("Successfully loaded cookie and initialized browser page for TikTok.");
 
                 // Navigate to the specified URL (e.g., search results or user timeline)
                 page = await GoToDiscoveryPageAsync(page, searchDto);
+                _logger.LogInfo($"Navigated to TikTok video details page for keyword: '{searchDto.Keyword}'");
+
 
                 // Store the base URL for constructing absolute URLs later
-                string tiktokUrl = page.Url;
+                string tiktokVideoUrl = page.Url; // This will be the URL of the currently playing video
 
-                // Selector for a single video article container
-                var videoArticleContainerSelector = "article[data-e2e='recommend-list-item-container']";
-
-                // Use a HashSet to keep track of processed videos by their data-scroll-index.
-                // This prevents reprocessing the same video if scrolling brings it back into view.
                 var processedVideoIdentifiers = new HashSet<string>();
-                int maxScrollAttempts = 5; // Define how many times you want to scroll down the page. Adjust as needed.
+                int maxScrollAttempts = searchDto.PageNumber;
+                _logger.LogInfo($"Starting to scrape TikTok videos. Will attempt up to {maxScrollAttempts} scroll cycles.");
 
-                Console.WriteLine($"Starting to scrape. Will attempt up to {maxScrollAttempts} scroll cycles.");
-
-                for (int i = 0; i < maxScrollAttempts; i++) 
+                for (int i = 0; i < maxScrollAttempts; i++)
                 {
-                    // Scroll down to load more content
-                    // This scrolls by the height of the current viewport.
-                    await page.EvaluateAsync("window.scrollBy(0, window.innerHeight)");
-                    await Task.Delay(2000); // Give the page time for new content to load and render (adjust delay if needed)
-
-                    // Get all video article locators currently in the DOM
-                    var currentVideoLocators = await page.Locator(videoArticleContainerSelector).AllAsync();
-
-                    bool newVideosFoundInThisScroll = false;
-
-                    foreach (var videoLocator in currentVideoLocators)
+                    _logger.LogInfo($"Processing TikTok video, scroll attempt {i + 1}/{maxScrollAttempts}.");
+                    try
                     {
-                        // Attempt to get the data-scroll-index for uniqueness tracking
-                        // If you can find a more stable unique ID (like a video URL), use that instead.
-                        string? dataScrollIndex = await videoLocator.GetAttributeAsync("data-scroll-index");
-
-                        // If we can't get a unique identifier or have already processed this one, skip
-                        if (string.IsNullOrWhiteSpace(dataScrollIndex) || processedVideoIdentifiers.Contains(dataScrollIndex))
-                        {
-                            continue;
-                        }
-
-                        processedVideoIdentifiers.Add(dataScrollIndex); // Mark as processed
-                        newVideosFoundInThisScroll = true;
-
-                        // --- Extract Data for this NEWLY DISCOVERED video ---
-
                         string? username = null;
                         string? profileUrl = null;
                         string? videoDescription = null;
-                        string? likesCount = null;
-                        string? commentsCount = null;
-                        string? sharesCount = null;
 
-                        // Username and Profile URL
-                        var usernameLocator = videoLocator.Locator("div[data-e2e='video-author-uniqueid']").First;
-                        var profileLinkLocator = videoLocator.Locator("a.css-nw70yw-5e6d46e3--StyledAuthorAnchor").First;
+                        // Wait until the profile link is visible
+                        await page.WaitForSelectorAsync("a.css-tppnop-5e6d46e3--StyledLink");
+                        _logger.LogInfo("Profile link element found.");
 
-                        if (await usernameLocator.IsVisibleAsync())
+                        // Select the <a> element
+                        var profileLink = await page.QuerySelectorAsync("a.css-tppnop-5e6d46e3--StyledLink");
+
+                        if (profileLink == null)
                         {
-                            username = await usernameLocator.InnerTextAsync();
+                            _logger.LogWarning("Profile link element not found after waiting. Skipping current video.");
+                            await page.Keyboard.PressAsync("ArrowDown"); // Try to move to the next video
+                            await Task.Delay(2000);
+                            continue;
                         }
-                        if (await profileLinkLocator.IsVisibleAsync())
+
+                        // Extract href (profile URL)
+                        profileUrl = await profileLink.GetAttributeAsync("href");
+                        profileUrl = profileUrl != null && profileUrl.StartsWith("http") ? profileUrl : $"https://www.tiktok.com{profileUrl}";
+                        _logger.LogInfo($"Extracted profile URL: '{profileUrl}'");
+
+                        // Extract username
+                        var usernameElement = await profileLink.QuerySelectorAsync("span[data-e2e='browse-username'] span.css-6tu85p-5e6d46e3--SpanEllipsis");
+                        if (usernameElement != null)
                         {
-                            string? relativeUrl = await profileLinkLocator.GetAttributeAsync("href");
-                            if (!string.IsNullOrWhiteSpace(relativeUrl))
-                            {
-                                profileUrl = new Uri(new Uri(tiktokUrl), relativeUrl).AbsoluteUri;
-                            }
+                            username = await usernameElement.InnerTextAsync();
+                            _logger.LogInfo($"Extracted username: '{username}'");
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Username element not found for the current video.");
+                            username = "Unknown TikTok User";
                         }
 
                         // Video Description
-                        var descriptionLocator = videoLocator.Locator("div[data-e2e='video-desc']").First;
-                        if (await descriptionLocator.IsVisibleAsync())
-                        {
-                            videoDescription = await descriptionLocator.InnerTextAsync();
-                            videoDescription = videoDescription?.Trim();
-                        }
+                        videoDescription = await GetVideoDescription(page);
+                        _logger.LogInfo($"Extracted video description (first 100 chars): {videoDescription?.Substring(0, Math.Min(videoDescription.Length, 100)) ?? "N/A"}");
 
-                        // Likes Count
-                        var likesLocator = videoLocator.Locator("strong[data-e2e='like-count']").First;
-                        if (await likesLocator.IsVisibleAsync())
-                        {
-                            likesCount = await likesLocator.InnerTextAsync();
-                        }
-
-                        // Comments Count
-                        var commentsLocator = videoLocator.Locator("strong[data-e2e='comment-count']").First;
-                        if (await commentsLocator.IsVisibleAsync())
-                        {
-                            commentsCount = await commentsLocator.InnerTextAsync();
-                        }
-
-                        // Shares Count
-                        var sharesLocator = videoLocator.Locator("strong[data-e2e='share-count']").First;
-                        if (await sharesLocator.IsVisibleAsync())
-                        {
-                            sharesCount = await sharesLocator.InnerTextAsync();
-                        }
 
                         // Only process and save if core data exists
                         if (!string.IsNullOrWhiteSpace(username) || !string.IsNullOrWhiteSpace(videoDescription))
                         {
+                            _logger.LogInfo($"Checking relevance for TikTok video by '{username}'");
                             // Use AI service to check if the content is relevant
                             var isRelevant = await _aiService.CheckIfContentIsRelevantAsync(videoDescription, searchDto.Query);
 
                             if (isRelevant)
                             {
-                                var lead = new Leads()
+                                try
                                 {
-                                    Name = username,
-                                    ProfileUrl = profileUrl,
-                                    Status = "New",
-                                    Platform = "TikTok",
-                                    PostDescription = videoDescription,
-                                    PostUrl = tiktokUrl,
-                                    Keywords = searchDto.Keyword,
-                                    Query = searchDto.Query,
-                                    PostDate = DateTime.Now
-                                };
+                                    var lead = new Leads()
+                                    {
+                                        Name = username,
+                                        ProfileUrl = profileUrl,
+                                        Status = "New",
+                                        Platform = "TikTok",
+                                        PostDescription = videoDescription,
+                                        PostUrl = tiktokVideoUrl, // This URL might need to be specific to the video, not just the search page.
+                                        Keywords = searchDto.Keyword,
+                                        Query = searchDto.Query,
+                                        PostDate = DateTime.UtcNow // Using UtcNow as no specific post date is extracted
+                                    };
 
-                                await _context.Leads.AddAsync(lead);
-                                await _context.SaveChangesAsync();
+                                    await _context.Leads.AddAsync(lead);
+                                    await _context.SaveChangesAsync();
+                                    _logger.LogInfo($"Successfully added new relevant lead: '{username}' from TikTok video.");
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogError($"Error saving lead '{username}' from TikTok video. Exception: {ex.Message}");
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogInfo($"TikTok video by '{username}' deemed not relevant by AI for query: '{searchDto.Query}'");
                             }
                         }
-                    }
+                        else
+                        {
+                            _logger.LogWarning($"Skipping TikTok video due to missing username or video description.");
+                        }
 
-                    // If no new unique videos were found in this scroll cycle (after the first scroll),
-                    // it's likely we've reached the end of available content or hit a loading issue.
-                    if (!newVideosFoundInThisScroll && i > 0)
+                        await page.Keyboard.PressAsync("ArrowDown");
+                        await Task.Delay(2000); // Small delay to allow the next video to load
+                        _logger.LogInfo("Pressed ArrowDown to navigate to the next video, waiting 2 seconds.");
+                    }
+                    catch (Exception ex)
                     {
-                        Console.WriteLine("No new unique videos detected after scrolling. Ending scraping.");
-                        break;
+                        _logger.LogError($"Error during TikTok video processing in scroll attempt {i + 1}. Attempting to move to next video. Exception: {ex.Message}");
+                        await page.Keyboard.PressAsync("ArrowDown");
+                        await Task.Delay(2000); // Add a delay after error to stabilize
+                        continue; // Skip to the next iteration
                     }
                 }
             }
             catch (Exception ex)
             {
-                // Internal logging for general exceptions.
-                throw ex;
+                _logger.LogError($"An unhandled error occurred during TikTok search for keyword: '{searchDto.Keyword}'. Exception: {ex.Message}");
+                throw; // Re-throw the exception after logging
             }
             finally
             {
-                await browser.CloseAsync();
+                if (browser != null)
+                {
+                    await browser.CloseAsync();
+                    _logger.LogInfo("Browser closed in finally block after TikTok search.");
+                }
             }
         }
     }

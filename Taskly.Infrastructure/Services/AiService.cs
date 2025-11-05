@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Taskly.Application.Constants;
 using Taskly.Application.Dtos;
 using Taskly.Application.Interfaces;
+using Taskly.Domain.Entities;
 
 namespace Taskly.Infrastructure.Services
 {
@@ -41,6 +42,9 @@ namespace Taskly.Infrastructure.Services
         {
             try
             {
+                if (topic == string.Empty)
+                    return true;
+
                 // Generate a prompt to evaluate relevance
                 var prompt = AIConstants.IsPostRelevant(content, topic);
 
@@ -54,7 +58,7 @@ namespace Taskly.Infrastructure.Services
             {
                 // Log the exception in future versions if needed
                 // Return false on failure to ensure non-relevant default
-                return false;
+                return true;
             }
         }
 
@@ -87,12 +91,12 @@ namespace Taskly.Infrastructure.Services
         /// </summary>
         /// <param name="searchDto">DTO containing lead/search information.</param>
         /// <returns>Generated message text, or null on failure.</returns>
-        public async Task<string> GenerateDirectMessageAsync(SearchDto searchDto)
+        public async Task<string> GenerateDirectMessageAsync(AiDto aiDto)
         {
             try
             {
                 // Build prompt for DM generation
-                var prompts = AIConstants.BuildDirectMessagePrompt(searchDto);
+                var prompts = AIConstants.BuildDirectMessagePrompt(aiDto);
 
                 // Call LLM to generate text
                 var response = await _llmService.GenerateTextAsync(prompts);

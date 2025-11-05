@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using Taskly.Application.Interfaces;
 using Taskly.Domain;
 using Taskly.Domain.Entities;
 
@@ -10,6 +11,7 @@ namespace Taskly.Forms.Forms
     public partial class Cookies : Form
     {
         private readonly ApplicationDbContext _context;
+        private readonly ICookieService cookieService;
 
         public Cookies(ApplicationDbContext context)
         {
@@ -35,8 +37,10 @@ namespace Taskly.Forms.Forms
             dgvCookies.DataSource = cookies;
         }
 
-        private void btnUpload_Click(object sender, EventArgs e)
+        private async void btnUpload_Click(object sender, EventArgs e)
         {
+            var httpMode = _context.Settings.FirstOrDefault().ProcessDataOnline;
+
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
                 openFileDialog.Title = "Select a Cookies File";
@@ -50,12 +54,20 @@ namespace Taskly.Forms.Forms
                         string filePath = openFileDialog.FileName;
                         string fileContent = File.ReadAllText(filePath);
 
-                        var cookieEntity = new CookieFiles
-                        {
-                            FileName = filePath,
-                           Content = fileContent
-                        };
+                        CookieFiles cookieEntity = new CookieFiles();
 
+                        if (httpMode)
+                        {
+                            var remoteFileName = await cookieService.UploadFileAsync(fileContent);
+
+                            cookieEntity.FileName = remoteFileName.filePath;
+                            cookieEntity.Content = fileContent;
+                        }
+                        else
+                        {
+                            cookieEntity.FileName = filePath;
+                            cookieEntity.Content = fileContent;
+                        }
                         _context.CookieFiles.Add(cookieEntity);
                         _context.SaveChanges();
 

@@ -40,6 +40,7 @@ namespace Taskly.Forms
                     services.AddScoped<IExtractService, ExtractService>();
                     services.AddScoped<ISenderService, SenderService>();
                     services.AddScoped<ICookieService, CookieService>();
+                    services.AddScoped<ICampaignService, CampaignService>();    
                     services.AddScoped<IFacebookService, FacebookService>();
                     services.AddScoped<IInstagramService, InstagramService>();
                     services.AddScoped<ITwitterService, TwitterService>();
@@ -47,6 +48,7 @@ namespace Taskly.Forms
                     services.AddScoped<ITikTokService, TikTokService>();
 
                     services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+                    services.AddSingleton<IUiLogger, UiLogger>();
 
                     // ------------------------ Forms (UI) ------------------------
                     services.AddTransient<Forms.Taskly>();

@@ -1,13 +1,17 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using System;
 using System.Linq;
+using System.Net;
 using System.Security.Claims;
+using System.Text;
 using System.Threading.Tasks;
 using Taskly.Application.Constants;
 using Taskly.Application.Dtos;
 using Taskly.Application.Interfaces;
 using Taskly.Domain;
+using Taskly.Domain.Entities;
 
 namespace Taskly.Infrastructure.Services
 {
@@ -26,6 +30,8 @@ namespace Taskly.Infrastructure.Services
 
         private readonly ICookieService _cookieService;
 
+        private readonly ApplicationDbContext _context;
+
         /// <summary>
         /// Constructor for dependency injection.
         /// </summary>
@@ -36,7 +42,8 @@ namespace Taskly.Infrastructure.Services
             IRedditService redditService,
             ITikTokService tikTokService,
             IHttpContextAccessor httpContextAccessor,
-            ICookieService cookieService)
+            ICookieService cookieService,
+            ApplicationDbContext context)
         {
             _facebookService = facebookService;
             _instagramService = instagramService;
@@ -44,29 +51,34 @@ namespace Taskly.Infrastructure.Services
             _redditService = redditService;
             _tikTokService = tikTokService;
             _cookieService = cookieService;
+            _context = context;
         }
 
-        /// <summary>
-        /// Extracts content/posts from specified platforms based on SearchDto.
-        /// </summary>
-        /// <param name="searchDto">DTO containing search parameters, platform, and query details.</param>
-        /// <returns>Task representing the asynchronous extraction operation.</returns>
-        /// <exception cref="ArgumentException">Thrown if an unsupported platform is specified.</exception>
         public async Task ExtractAsync(SearchDto searchDto)
         {
             // ✅ 3. Determine extraction scope
-
             if (searchDto.MultiPlatform)
             {
+                // If a specific platform is selected, call only that service.
+                var cookiePaths = await _cookieService.GetCookieFilePathsAsync();
+
                 // If user selects "All Platforms", initiate extraction for all services simultaneously.
                 // Uses Task.WhenAll to run all searches concurrently for speed and efficiency.
-
                 var tasks = new List<Task>();
 
+                searchDto.CookiePath = cookiePaths.Where(p => p.Contains("facebook.com")).FirstOrDefault() ?? string.Empty;
                 tasks.Add(_facebookService.SearchAsync(searchDto));  // Scrape Facebook
+
+                searchDto.CookiePath = cookiePaths.Where(p => p.Contains("instagram.com")).FirstOrDefault() ?? string.Empty;
                 tasks.Add(_instagramService.SearchAsync(searchDto)); // Scrape Instagram
+
+                searchDto.CookiePath = cookiePaths.Where(p => p.Contains("x.com")).FirstOrDefault() ?? string.Empty;
                 tasks.Add(_twitterService.SearchAsync(searchDto));   // Scrape Twitter
-                tasks.Add(_redditService.SearchAsync(searchDto));    // Scrape Reddit
+
+                //searchDto.CookiePath = cookiePaths.Where(p => p.Contains("reddit.com")).FirstOrDefault() ?? string.Empty;
+                //tasks.Add(_redditService.SearchAsync(searchDto));    // Scrape Reddit
+
+                searchDto.CookiePath = cookiePaths.Where(p => p.Contains("tiktok.com")).FirstOrDefault() ?? string.Empty;
                 tasks.Add(_tikTokService.SearchAsync(searchDto));    // Scrape TikTok
 
                 // Await all platform tasks to finish
@@ -75,10 +87,10 @@ namespace Taskly.Infrastructure.Services
             else
             {
                 // If a specific platform is selected, call only that service.
-                var domain = await _cookieService.IdentifyCookieSiteAsync(searchDto.CookiePath);
+                var sites = await _cookieService.IdentifyCookieSiteAsync(searchDto.CookiePath);
 
                 // This ensures faster, platform-targeted scraping.
-                switch (domain)
+                switch (sites)
                 {
                     case "facebook.com":
                         await _facebookService.SearchAsync(searchDto);

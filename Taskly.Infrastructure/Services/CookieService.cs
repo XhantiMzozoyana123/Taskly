@@ -1,12 +1,17 @@
-﻿using Microsoft.Playwright;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Playwright;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Taskly.Application.Dtos;
 using Taskly.Application.Interfaces;
+using Taskly.Domain;
 
 namespace Taskly.Infrastructure.Services
 {
@@ -16,7 +21,18 @@ namespace Taskly.Infrastructure.Services
     /// </summary>
     public class CookieService : ICookieService
     {
-        public CookieService() { }
+        private readonly ApplicationDbContext _context;
+        
+        public CookieService(ApplicationDbContext context) 
+        {
+            _context = context;
+        }
+
+        public async Task<List<string>> GetCookieFilePathsAsync()
+        {
+            var query = await _context.CookieFiles.ToListAsync();
+            return query.Select(c => c.FileName).ToList();
+        }
 
         public async Task<string> IdentifyCookieSiteAsync(string cookiePath)
         {
@@ -126,6 +142,34 @@ namespace Taskly.Infrastructure.Services
                 Console.WriteLine($"❌ CookieService error: {ex.Message}");
                 throw;
             }
+        }
+
+        public async Task<UploadResponseDto> UploadFileAsync(string filePath)
+        {
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException($"File not found: {filePath}");
+
+            using var httpClient = new HttpClient();
+            using var form = new MultipartFormDataContent();
+            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            form.Add(fileContent, "file", Path.GetFileName(filePath));
+
+            string domain = _context.Settings.FirstOrDefault().MasterDomainUrl;
+            string apiUrl = $"{domain}api/fileupload/upload";
+
+            var response = await httpClient.PostAsync(apiUrl, form);
+            response.EnsureSuccessStatusCode();
+
+            string json = await response.Content.ReadAsStringAsync();
+            var uploadResult = System.Text.Json.JsonSerializer.Deserialize<UploadResponseDto>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            }) ?? throw new Exception("Failed to deserialize upload response");
+
+            return uploadResult;
         }
     }
 }

@@ -19,8 +19,8 @@ namespace Taskly.Application.Dtos
 
         public bool AccountRotation { get; set; } = false; 
 
-        public string CookiePath { get; set; } = string.Empty; // Path to the cookie file for authentication
-
         public bool PrivateMode { get; set; } = false;
+
+        public int MessageDelay { get; set; }
     }
 }

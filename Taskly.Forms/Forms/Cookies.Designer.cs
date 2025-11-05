@@ -48,7 +48,7 @@
             // 
             // btnUpload
             // 
-            btnUpload.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            btnUpload.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             btnUpload.Location = new Point(12, 524);
             btnUpload.Name = "btnUpload";
             btnUpload.Size = new Size(247, 49);
@@ -59,7 +59,7 @@
             // 
             // btnDeleteALL
             // 
-            btnDeleteALL.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnDeleteALL.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             btnDeleteALL.Location = new Point(879, 524);
             btnDeleteALL.Name = "btnDeleteALL";
             btnDeleteALL.Size = new Size(167, 49);
@@ -70,7 +70,7 @@
             // 
             // btnDelete
             // 
-            btnDelete.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnDelete.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             btnDelete.Location = new Point(706, 524);
             btnDelete.Name = "btnDelete";
             btnDelete.Size = new Size(167, 49);
@@ -81,7 +81,7 @@
             // 
             // btnUpdate
             // 
-            btnUpdate.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnUpdate.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             btnUpdate.Location = new Point(533, 524);
             btnUpdate.Name = "btnUpdate";
             btnUpdate.Size = new Size(167, 49);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,7 +9,8 @@ namespace Taskly.Application.Dtos
 {
     public class SearchDto
     {
-        public string UserId { get; set; } = string.Empty; // ID of the user making the request
+        [Key]
+        public int Id { get; set; }
 
         public string Keyword { get; set; } = string.Empty; // Keyword to search for
 
@@ -19,6 +21,8 @@ namespace Taskly.Application.Dtos
         public int PageNumber { get; set; } = 1; // For pagination, default to first page
 
         public bool PrivateMode { get; set; } = false; // Whether to include private content if permissions allow
+
+        public bool HttpMode { get; set; } = false; // Whether to use HTTP mode for requests
 
         public bool MultiPlatform { get; set; } = false; // Whether to search across multiple platforms
     }

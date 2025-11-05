@@ -86,6 +86,55 @@ namespace Taskly.Domain.Migrations
                     b.ToTable("CookieFiles");
                 });
 
+            modelBuilder.Entity("Taskly.Domain.Entities.CustomMessages", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("LeadId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CustomMessages");
+                });
+
+            modelBuilder.Entity("Taskly.Domain.Entities.Domains", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Domains");
+                });
+
             modelBuilder.Entity("Taskly.Domain.Entities.ExternalLinks", b =>
                 {
                     b.Property<int>("Id")
@@ -112,6 +161,29 @@ namespace Taskly.Domain.Migrations
                     b.ToTable("ExternalLinks");
                 });
 
+            modelBuilder.Entity("Taskly.Domain.Entities.GoogleAI", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApiKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GoogleAIs");
+                });
+
             modelBuilder.Entity("Taskly.Domain.Entities.Icebreakers", b =>
                 {
                     b.Property<int>("Id")
@@ -136,6 +208,33 @@ namespace Taskly.Domain.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Icebreakers");
+                });
+
+            modelBuilder.Entity("Taskly.Domain.Entities.LMStudio", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("LMStudios");
                 });
 
             modelBuilder.Entity("Taskly.Domain.Entities.Leads", b =>
@@ -195,7 +294,7 @@ namespace Taskly.Domain.Migrations
                     b.ToTable("Leads");
                 });
 
-            modelBuilder.Entity("Taskly.Domain.Entities.Messages", b =>
+            modelBuilder.Entity("Taskly.Domain.Entities.Settings", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -203,29 +302,64 @@ namespace Taskly.Domain.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("APIKeyRotateWhenUsingGemini")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("CookieRotateWhenExtractingOnline")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("LeadId")
-                        .HasColumnType("int");
+                    b.Property<bool>("DomainRotateWhenExtractingOnline")
+                        .HasColumnType("bit");
 
-                    b.Property<string>("Status")
+                    b.Property<string>("MasterDomainUrl")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Text")
+                    b.Property<int>("MessagingDelayInMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("RandomlySelectCookiesForMessaging")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("UseLMStudio")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Settings");
+                });
+
+            modelBuilder.Entity("Taskly.Domain.Entities.Templates", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("iceBreakerId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
-                    b.ToTable("Messages");
+                    b.ToTable("Templates");
                 });
 #pragma warning restore 612, 618
         }

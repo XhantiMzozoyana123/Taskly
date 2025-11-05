@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Taskly.Application.Dtos;
+using Taskly.Domain.Entities;
 
 namespace Taskly.Application.Constants
 {
@@ -78,16 +79,15 @@ namespace Taskly.Application.Constants
             return result;
         }
 
-        public static string BuildDirectMessagePrompt(SearchDto search)
+        public static string BuildDirectMessagePrompt(AiDto aiDto)
         {
             var sb = new StringBuilder();
 
             sb.AppendLine("You are an assistant for Taskly, a productivity and automation platform.");
             sb.AppendLine("Your goal is to craft a short, friendly, and personalized direct message to the user based on the following information:");
 
-            sb.AppendLine($"Search Keyword: {search.Keyword}");
-            sb.AppendLine($"User Query: {search.Query}");
-            sb.AppendLine($"Page Number: {search.PageNumber}");
+            sb.AppendLine($"Client's Post: {aiDto.Leads.PostDescription}");
+            sb.AppendLine($"User Query: {aiDto.Prompt}");
 
             sb.AppendLine("\nInstructions for the message:");
             sb.AppendLine("1. The message should directly address the user’s need based on their query and keyword.");
@@ -101,6 +101,5 @@ namespace Taskly.Application.Constants
 
             return sb.ToString();
         }
-
     }
 }

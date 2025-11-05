@@ -12,8 +12,8 @@ namespace Taskly.Domain
 {
     public class ApplicationDbContext : DbContext
     {
-       public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-       : base(options)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
         {
         }
 
@@ -25,7 +25,7 @@ namespace Taskly.Domain
         private static DbContextOptions<ApplicationDbContext> DesignTimeDbContextOptions()
         {
             // Build the path to the PetGroomer.Api project
-            var webProjectPath = Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).FullName, "Taskly.Forms");
+            var webProjectPath = Path.Combine(Directory.GetParent(Directory.GetCurrentDirectory()).FullName, "Taskly.Api");
 
             // Load the configuration from appsettings.json in the .Api project
             IConfigurationRoot configuration = new ConfigurationBuilder()
@@ -55,8 +55,24 @@ namespace Taskly.Domain
 
         public DbSet<Icebreakers> Icebreakers { get; set; }
 
+        public DbSet<CustomMessages> CustomMessages { get; set; }
+
+        public DbSet<Templates> Templates { get; set; }
+
+        public DbSet<Domains> Domains { get; set; }
+
+        public DbSet<GoogleAI> GoogleAIs { get; set; }
+
+        public DbSet<LMStudio> LMStudios { get; set; }
+
+        public DbSet<Settings> Settings { get; set; }
+
         public DbSet<Campaigns> Campaigns { get; set; }
 
-        public DbSet<Messages> Messages { get; set; }
+        public DbSet<CampaignSequences> CampaignSequences { get; set; }
+
+        public DbSet<CampaignMessages> CampaignMessages { get; set; }
+
+        public DbSet<CampaignContent> CampaignContents { get; set; }    
     }
 }

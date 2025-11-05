@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Taskly.Application.Dtos;
+using Taskly.Domain.Entities;
 
 namespace Taskly.Application.Interfaces
 {
@@ -11,7 +12,7 @@ namespace Taskly.Application.Interfaces
     {
         public Task<List<PostContentDto>> GeneratePostsTextContentAsync(string content);
 
-        public Task<string> GenerateDirectMessageAsync(SearchDto searchDto);
+        public Task<string> GenerateDirectMessageAsync(AiDto aiDto);
 
         public Task<bool> CheckIfContentIsRelevantAsync(string content, string topic);
 

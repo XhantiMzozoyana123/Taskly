@@ -11,6 +11,8 @@ namespace Taskly.Application.Interfaces
 {
     public interface ISenderService
     {
-        Task MessagingSequenceAsync(MessengerDto messengerDto);
+        Task StartMessages(MessengerDto messengerDto);
+
+        Task StartCampaignMessages(MessengerDto messengerDto, List<Leads> leads);
     }
 }
