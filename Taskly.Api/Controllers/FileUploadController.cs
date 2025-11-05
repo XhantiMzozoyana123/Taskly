@@ -25,9 +25,20 @@ namespace Taskly.Api.Controllers
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
 
-            // Unique file name
-            string fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+            // Use the original file name
+            string fileName = Path.GetFileName(file.FileName); // gets only the file name, strips any path
             string filePath = Path.Combine(uploadsFolder, fileName);
+
+            // Optional: make unique if file exists
+            int count = 1;
+            string nameOnly = Path.GetFileNameWithoutExtension(fileName);
+            string extension = Path.GetExtension(fileName);
+            while (System.IO.File.Exists(filePath))
+            {
+                fileName = $"{nameOnly}({count}){extension}";
+                filePath = Path.Combine(uploadsFolder, fileName);
+                count++;
+            }
 
             // Save file
             using (var stream = new FileStream(filePath, FileMode.Create))
@@ -35,9 +46,10 @@ namespace Taskly.Api.Controllers
                 await file.CopyToAsync(stream);
             }
 
-            // Return **relative path** or full URL
-            string relativePath = Path.Combine("uploads", fileName); // e.g., uploads/abc123.png
+            // Return **relative path** with forward slashes
+            string relativePath = Path.Combine("uploads", fileName).Replace("\\", "/");
             return Ok(new { filePath = relativePath });
         }
+
     }
 }

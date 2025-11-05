@@ -26,6 +26,7 @@ namespace Taskly.Forms.Forms
         private readonly ISenderService _senderService;
         private readonly IAiService _aiService;
         private readonly ICampaignService _campaignService;
+        private readonly ICookieService _cookieService;
         private readonly IUiLogger _logger;
 
         private List<string> messageSequence = new List<string>();
@@ -35,6 +36,7 @@ namespace Taskly.Forms.Forms
             ISenderService senderService,
             IAiService aiService,
             ICampaignService campaignService,
+            ICookieService cookieService,
             IUiLogger logger)
         {
             InitializeComponent();
@@ -44,6 +46,7 @@ namespace Taskly.Forms.Forms
             _senderService = senderService;
             _aiService = aiService;
             _campaignService = campaignService;
+            _cookieService = cookieService;
             _logger = logger;
 
             // Bind ListBox to the logger's BindingList
@@ -59,6 +62,7 @@ namespace Taskly.Forms.Forms
             {
                 var settings = await _context.Settings.FirstOrDefaultAsync();
                 var httpMode = settings.ProcessDataRemotely;
+                var domain = settings.MasterDomainUrl;
 
                 SearchDto searchDto = new SearchDto
                 {
@@ -73,7 +77,7 @@ namespace Taskly.Forms.Forms
 
                 if (httpMode)
                 {
-                    ApiConstant.ExtractorHttpRequest(searchDto, settings.MasterDomainUrl);
+                    ApiConstant.ExtractorHttpRequest(searchDto, domain);
                 }
                 else
                 {
@@ -124,7 +128,7 @@ namespace Taskly.Forms.Forms
 
         private void cookiesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Forms.Cookies cookies = new Forms.Cookies(_context);
+            Forms.Cookies cookies = new Forms.Cookies(_context, _cookieService);
             cookies.Show();
         }
 
@@ -142,6 +146,7 @@ namespace Taskly.Forms.Forms
             {
                 var settings = await _context.Settings.FirstOrDefaultAsync();
                 var httpMode = settings.SendMessagesRemotely;
+                var domain = settings.MasterDomainUrl;
                 
                 var messengerDto = new MessengerDto
                 {
@@ -153,7 +158,10 @@ namespace Taskly.Forms.Forms
                     MessageDelay = (int)(settings.MessagingDelayInMinutes * 60 * 1000)
                 };
 
-                if (httpMode) { }
+                if (httpMode) 
+                {
+                    ApiConstant.SenderHttpRequest(messengerDto, domain);
+                }
                 else
                 {
                     await _senderService.StartMessages(messengerDto);
@@ -271,6 +279,7 @@ namespace Taskly.Forms.Forms
         {
             var settings = await _context.Settings.FirstOrDefaultAsync();
             bool httpMode = settings.ProcessDataRemotely;
+            string domain = settings.MasterDomainUrl;
 
             using (OpenFileDialog ofd = new OpenFileDialog())
             {
@@ -295,7 +304,7 @@ namespace Taskly.Forms.Forms
 
                         if (httpMode)
                         {
-                            ApiConstant.BatchExtractorHttpRequest(searchList, settings.MasterDomainUrl);
+                            ApiConstant.BatchExtractorHttpRequest(searchList, domain);
                             MessageBox.Show("All searches are in progress via HTTP.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             return;
                         }
@@ -349,7 +358,7 @@ namespace Taskly.Forms.Forms
 
         private void cookiesToolStripMenuItem1_Click(object sender, EventArgs e)
         {
-            Cookies cookies = new Cookies(_context);
+            Cookies cookies = new Cookies(_context, _cookieService);
             cookies.Show();
         }
 

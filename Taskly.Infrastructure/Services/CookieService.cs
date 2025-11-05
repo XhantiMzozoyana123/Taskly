@@ -172,31 +172,38 @@ namespace Taskly.Infrastructure.Services
         /// <returns>Response DTO from the upload API.</returns>
         public async Task<UploadResponseDto> UploadFileRemotelyAsync(string filePath)
         {
-            if (!File.Exists(filePath))
-                throw new FileNotFoundException($"File not found: {filePath}");
-
-            using var httpClient = new HttpClient();
-            using var form = new MultipartFormDataContent();
-            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-
-            var fileContent = new StreamContent(stream);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-            form.Add(fileContent, "file", Path.GetFileName(filePath));
-
-            string domain = _context.Settings.FirstOrDefault()?.MasterDomainUrl
-                            ?? throw new Exception("MasterDomainUrl not configured in settings.");
-            string apiUrl = $"{domain}api/fileupload/upload";
-
-            var response = await httpClient.PostAsync(apiUrl, form);
-            response.EnsureSuccessStatusCode();
-
-            string json = await response.Content.ReadAsStringAsync();
-            var uploadResult = System.Text.Json.JsonSerializer.Deserialize<UploadResponseDto>(json, new JsonSerializerOptions
+            try
             {
-                PropertyNameCaseInsensitive = true
-            }) ?? throw new Exception("Failed to deserialize upload response");
+                if (!File.Exists(filePath))
+                    throw new FileNotFoundException($"File not found: {filePath}");
 
-            return uploadResult;
+                using var httpClient = new HttpClient();
+                using var form = new MultipartFormDataContent();
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+
+                var fileContent = new StreamContent(stream);
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+                form.Add(fileContent, "file", Path.GetFileName(filePath));
+
+                string domain = _context.Settings.FirstOrDefault()?.MasterDomainUrl
+                                ?? throw new Exception("MasterDomainUrl not configured in settings.");
+                string apiUrl = $"{domain}api/fileupload/upload";
+
+                var response = await httpClient.PostAsync(apiUrl, form);
+                response.EnsureSuccessStatusCode();
+
+                string json = await response.Content.ReadAsStringAsync();
+                var uploadResult = System.Text.Json.JsonSerializer.Deserialize<UploadResponseDto>(json, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                }) ?? throw new Exception("Failed to deserialize upload response");
+
+                return uploadResult;
+            }
+            catch(Exception ex)
+            {
+                throw ex;
+            }
         }
     }
 }

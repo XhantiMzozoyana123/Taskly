@@ -38,6 +38,7 @@ namespace Taskly.Forms.Forms
 
             // Bind UI controls to values
             txtDomain.Text = _settings.MasterDomainUrl;
+            ckHttpMode.Checked = _settings.ProcessDataRemotely;
             ckSendMessagesOnline.Checked = _settings.SendMessagesRemotely;
             ckSearchDomainRotate.Checked = _settings.DomainRotateWhenExtractingRemotely;
             ckSearchCookieRotate.Checked = _settings.CookieRotateWhenExtractingRemotely;
@@ -61,6 +62,7 @@ namespace Taskly.Forms.Forms
 
                 // Assign values from UI
                 settings.MasterDomainUrl = txtDomain.Text;
+                settings.ProcessDataRemotely = ckHttpMode.Checked;
                 settings.SendMessagesRemotely = ckSendMessagesOnline.Checked;
                 settings.DomainRotateWhenExtractingRemotely = ckSearchDomainRotate.Checked;
                 settings.CookieRotateWhenExtractingRemotely = ckSearchCookieRotate.Checked;

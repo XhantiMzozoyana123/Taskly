@@ -84,5 +84,29 @@ namespace Taskly.Application.Constants
             var reader = new StreamReader(respStream);
             string data = reader.ReadToEnd();
         }
+
+        public static void SenderHttpRequest(MessengerDto messengerDto, string domain)
+        {
+            var url = domain + ("api/sender/send");
+
+            var request = WebRequest.Create(url);
+            request.Method = "POST";
+
+            var json = JsonConvert.SerializeObject(messengerDto);
+            byte[] byteArray = Encoding.UTF8.GetBytes(json);
+
+            request.ContentType = "application/json";
+            request.ContentLength = byteArray.Length;
+
+            var reqStream = request.GetRequestStream();
+            reqStream.Write(byteArray, 0, byteArray.Length);
+
+            var response = request.GetResponse();
+
+            var respStream = response.GetResponseStream();
+
+            var reader = new StreamReader(respStream);
+            string data = reader.ReadToEnd();
+        }
     }
 }

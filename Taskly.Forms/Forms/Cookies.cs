@@ -12,12 +12,13 @@ namespace Taskly.Forms.Forms
     public partial class Cookies : Form
     {
         private readonly ApplicationDbContext _context;
-        private readonly ICookieService cookieService;
+        private readonly ICookieService _cookieService;
 
-        public Cookies(ApplicationDbContext context)
+        public Cookies(ApplicationDbContext context, ICookieService cookieService)
         {
             InitializeComponent();
             _context = context;
+            _cookieService = cookieService;
         }
 
         private void Cookies_Load(object sender, EventArgs e)
@@ -40,8 +41,9 @@ namespace Taskly.Forms.Forms
 
         private async void btnUpload_Click(object sender, EventArgs e)
         {
-            var setting = await _context.Settings.FirstOrDefaultAsync();
-            var httpMode = setting.ProcessDataRemotely;
+            var settings = await _context.Settings.FirstOrDefaultAsync();
+            var domain = settings.MasterDomainUrl;
+            var httpMode = settings.ProcessDataRemotely;
 
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
@@ -60,9 +62,9 @@ namespace Taskly.Forms.Forms
 
                         if (httpMode)
                         {
-                            var remoteFileName = await cookieService.UploadFileRemotelyAsync(fileContent);
+                            var remoteFileName = await _cookieService.UploadFileRemotelyAsync(filePath);
 
-                            cookieEntity.FileName = remoteFileName.filePath;
+                            cookieEntity.FileName = domain + remoteFileName.filePath.Replace("\\", "/"); 
                             cookieEntity.Content = fileContent;
                             cookieEntity.Remote = true;
                         }

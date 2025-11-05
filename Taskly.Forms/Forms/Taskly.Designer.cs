@@ -44,11 +44,10 @@
             rtxtMessage = new RichTextBox();
             menuStrip1 = new MenuStrip();
             dataControlsToolStripMenuItem = new ToolStripMenuItem();
+            cookiesToolStripMenuItem1 = new ToolStripMenuItem();
             contentToolStripMenuItem = new ToolStripMenuItem();
             templatesToolStripMenuItem1 = new ToolStripMenuItem();
-            customMessagesToolStripMenuItem1 = new ToolStripMenuItem();
             customMessagesToolStripMenuItem2 = new ToolStripMenuItem();
-            cookiesToolStripMenuItem1 = new ToolStripMenuItem();
             campaignToolStripMenuItem = new ToolStripMenuItem();
             campaignToolStripMenuItem1 = new ToolStripMenuItem();
             sequencesToolStripMenuItem = new ToolStripMenuItem();
@@ -246,9 +245,16 @@
             dataControlsToolStripMenuItem.Text = "Data Controls";
             dataControlsToolStripMenuItem.Click += dataControlsToolStripMenuItem_Click;
             // 
+            // cookiesToolStripMenuItem1
+            // 
+            cookiesToolStripMenuItem1.Name = "cookiesToolStripMenuItem1";
+            cookiesToolStripMenuItem1.Size = new Size(75, 24);
+            cookiesToolStripMenuItem1.Text = "Cookies";
+            cookiesToolStripMenuItem1.Click += cookiesToolStripMenuItem1_Click;
+            // 
             // contentToolStripMenuItem
             // 
-            contentToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { templatesToolStripMenuItem1, customMessagesToolStripMenuItem1, customMessagesToolStripMenuItem2 });
+            contentToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { templatesToolStripMenuItem1, customMessagesToolStripMenuItem2 });
             contentToolStripMenuItem.Name = "contentToolStripMenuItem";
             contentToolStripMenuItem.Size = new Size(75, 24);
             contentToolStripMenuItem.Text = "Content";
@@ -260,25 +266,12 @@
             templatesToolStripMenuItem1.Text = "Templates";
             templatesToolStripMenuItem1.Click += templatesToolStripMenuItem1_Click;
             // 
-            // customMessagesToolStripMenuItem1
-            // 
-            customMessagesToolStripMenuItem1.Name = "customMessagesToolStripMenuItem1";
-            customMessagesToolStripMenuItem1.Size = new Size(224, 26);
-            customMessagesToolStripMenuItem1.Text = "Icebreakers";
-            // 
             // customMessagesToolStripMenuItem2
             // 
             customMessagesToolStripMenuItem2.Name = "customMessagesToolStripMenuItem2";
             customMessagesToolStripMenuItem2.Size = new Size(224, 26);
             customMessagesToolStripMenuItem2.Text = "Custom Messages";
             customMessagesToolStripMenuItem2.Click += customMessagesToolStripMenuItem2_Click;
-            // 
-            // cookiesToolStripMenuItem1
-            // 
-            cookiesToolStripMenuItem1.Name = "cookiesToolStripMenuItem1";
-            cookiesToolStripMenuItem1.Size = new Size(75, 24);
-            cookiesToolStripMenuItem1.Text = "Cookies";
-            cookiesToolStripMenuItem1.Click += cookiesToolStripMenuItem1_Click;
             // 
             // campaignToolStripMenuItem
             // 
@@ -633,7 +626,6 @@
         private ToolStripMenuItem settingsToolStripMenuItem;
         private ToolStripMenuItem contentToolStripMenuItem;
         private ToolStripMenuItem templatesToolStripMenuItem1;
-        private ToolStripMenuItem customMessagesToolStripMenuItem1;
         private ToolStripMenuItem customMessagesToolStripMenuItem2;
         private ToolStripMenuItem cookiesToolStripMenuItem1;
         private ToolStripMenuItem domainsToolStripMenuItem;
