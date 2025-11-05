@@ -11,6 +11,10 @@ using Taskly.Domain.Entities;
 
 namespace Taskly.Infrastructure.Services
 {
+    /// <summary>
+    /// Handles campaign operations such as starting, pausing, resuming, and processing messages.
+    /// Integrates with Hangfire for background scheduling and ISenderService for message delivery.
+    /// </summary>
     public class CampaignService : ICampaignService
     {
         private readonly ApplicationDbContext _context;
@@ -22,6 +26,9 @@ namespace Taskly.Infrastructure.Services
             _senderService = senderService;
         }
 
+        /// <summary>
+        /// Pauses a campaign by setting its status to "Inactive".
+        /// </summary>
         public Task PauseCampaignAsync(Campaigns campaign)
         {
             campaign.Status = "Inactive";
@@ -29,6 +36,9 @@ namespace Taskly.Infrastructure.Services
             return _context.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Resumes a campaign by setting its status to "Active".
+        /// </summary>
         public Task ResumeCampaignAsync(Campaigns campaign)
         {
             campaign.Status = "Active";
@@ -37,7 +47,7 @@ namespace Taskly.Infrastructure.Services
         }
 
         /// <summary>
-        /// Schedule all sequences and messages of a campaign
+        /// Schedules all sequences and messages of a campaign for execution via Hangfire.
         /// </summary>
         public async Task RunCampaignsAsync(Campaigns campaign)
         {
@@ -55,7 +65,7 @@ namespace Taskly.Infrastructure.Services
 
                 foreach (var message in messages)
                 {
-                    // Schedule message processing via Hangfire
+                    // Schedule message processing with delay based on sequence's wait time
                     BackgroundJob.Schedule<CampaignService>(
                         service => service.ProcessCampaignMessageAsync(sequence.Id, message.Id),
                         TimeSpan.FromHours(sequence.WaitTimeInHours)
@@ -65,7 +75,7 @@ namespace Taskly.Infrastructure.Services
         }
 
         /// <summary>
-        /// Process a single campaign message (executed by Hangfire)
+        /// Processes a single campaign message. Called by Hangfire in the background.
         /// </summary>
         private async Task ProcessCampaignMessageAsync(int sequenceId, int messageId)
         {
@@ -76,18 +86,19 @@ namespace Taskly.Infrastructure.Services
 
                 if (sequence == null || message == null) return;
 
-                // Fetch active leads at runtime
+                // Get all active leads for this campaign sequence
                 var leads = await _context.Leads
                     .Where(l => l.CampaignId == sequence.CampaignId)
                     .ToListAsync();
 
+                // Get all message contents associated with this message
                 var contents = await _context.CampaignContents
                     .Where(c => c.CampaignMessageId == message.Id)
                     .ToListAsync();
 
                 if (!contents.Any()) return;
 
-                // Build MessengerDto
+                // Build DTO for sending messages
                 var messengerDto = new MessengerDto
                 {
                     Text = contents.First().MessageText,
@@ -95,22 +106,22 @@ namespace Taskly.Infrastructure.Services
                     MessegeRotation = message.MessageRotation,
                     AccountRotation = sequence.AccountRotation,
                     PrivateMode = true,
-                    MessageDelay = (int)(message.WaitTimeInMinutes * 60 * 1000)
+                    MessageDelay = (int)(message.WaitTimeInMinutes * 60 * 1000) // Convert minutes to milliseconds
                 };
 
-                // Send message to all leads
+                // Send the message to all leads
                 await _senderService.StartCampaignMessages(messengerDto, leads);
 
-                // After all messages in sequence are processed, mark sequence completed
+                // Mark sequence as completed after processing
                 sequence.Completed = true;
                 _context.CampaignSequences.Update(sequence);
                 await _context.SaveChangesAsync();
             }
             catch (Exception ex)
             {
-                // Replace with proper logging
+                // Log exception and allow Hangfire to handle retries
                 Console.WriteLine($"Error processing sequence {sequenceId}, message {messageId}: {ex.Message}");
-                throw; // Let Hangfire retry if enabled
+                throw;
             }
         }
     }

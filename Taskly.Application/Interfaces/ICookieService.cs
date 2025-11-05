@@ -17,6 +17,6 @@ namespace Taskly.Application.Interfaces
 
         Task<List<string>> GetCookieFilePathsAsync();
 
-        Task<UploadResponseDto> UploadFileAsync(string filePath);
+        Task<UploadResponseDto> UploadFileRemotelyAsync(string filePath);
     }
 }

@@ -22,6 +22,105 @@ namespace Taskly.Domain.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Taskly.Domain.Entities.CampaignContent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CampaignMessageId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MessageText")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("Replied")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("Sent")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CampaignContents");
+                });
+
+            modelBuilder.Entity("Taskly.Domain.Entities.CampaignMessages", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CampaignSequenceId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("MessageRotation")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("WaitTimeInMinutes")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CampaignMessages");
+                });
+
+            modelBuilder.Entity("Taskly.Domain.Entities.CampaignSequences", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("AccountRotation")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("CampaignId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Completed")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SequenceDescription")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SequenceName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("WaitTimeInHours")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CampaignSequences");
+                });
+
             modelBuilder.Entity("Taskly.Domain.Entities.Campaigns", b =>
                 {
                     b.Property<int>("Id")
@@ -77,6 +176,9 @@ namespace Taskly.Domain.Migrations
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("Remote")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -305,13 +407,13 @@ namespace Taskly.Domain.Migrations
                     b.Property<bool>("APIKeyRotateWhenUsingGemini")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("CookieRotateWhenExtractingOnline")
+                    b.Property<bool>("CookieRotateWhenExtractingRemotely")
                         .HasColumnType("bit");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<bool>("DomainRotateWhenExtractingOnline")
+                    b.Property<bool>("DomainRotateWhenExtractingRemotely")
                         .HasColumnType("bit");
 
                     b.Property<string>("MasterDomainUrl")
@@ -321,7 +423,13 @@ namespace Taskly.Domain.Migrations
                     b.Property<int>("MessagingDelayInMinutes")
                         .HasColumnType("int");
 
+                    b.Property<bool>("ProcessDataRemotely")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("RandomlySelectCookiesForMessaging")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("SendMessagesRemotely")
                         .HasColumnType("bit");
 
                     b.Property<DateTime>("UpdatedAt")

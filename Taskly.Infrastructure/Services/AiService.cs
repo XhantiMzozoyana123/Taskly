@@ -1,21 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Taskly.Application.Constants;
 using Taskly.Application.Dtos;
 using Taskly.Application.Interfaces;
-using Taskly.Domain.Entities;
 
 namespace Taskly.Infrastructure.Services
 {
     /// <summary>
-    /// AiService integrates with an LLM service to generate, evaluate, and process content.
-    /// Core responsibilities in Leverage:
-    /// 1. Check if a scraped post is relevant to a topic.
-    /// 2. Convert images to text using AI.
+    /// AiService integrates with a Large Language Model (LLM) service to:
+    /// 1. Determine relevance of content to a given topic.
+    /// 2. Extract text from images using AI OCR.
     /// 3. Generate personalized direct messages for leads.
     /// 4. Generate structured post content for automation or messaging.
     /// </summary>
@@ -24,7 +20,7 @@ namespace Taskly.Infrastructure.Services
         private readonly ILLMService _llmService;
 
         /// <summary>
-        /// Constructor for AiService.
+        /// Initializes a new instance of the <see cref="AiService"/> class.
         /// </summary>
         /// <param name="llmService">Injected service for interacting with a large language model.</param>
         public AiService(ILLMService llmService)
@@ -33,31 +29,32 @@ namespace Taskly.Infrastructure.Services
         }
 
         /// <summary>
-        /// Checks if the given content is relevant to a specified topic using the LLM.
+        /// Checks whether a given piece of content is relevant to a specified topic.
+        /// Uses the LLM to evaluate relevance.
         /// </summary>
-        /// <param name="content">Text content of the post or lead.</param>
-        /// <param name="topic">Topic to check relevance against.</param>
-        /// <returns>True if content is relevant; otherwise, false.</returns>
+        /// <param name="content">The content to evaluate.</param>
+        /// <param name="topic">The topic to check relevance against.</param>
+        /// <returns>True if the content is relevant; otherwise, false.</returns>
         public async Task<bool> CheckIfContentIsRelevantAsync(string content, string topic)
         {
             try
             {
-                if (topic == string.Empty)
+                // If no topic is specified, treat content as relevant
+                if (string.IsNullOrEmpty(topic))
                     return true;
 
-                // Generate a prompt to evaluate relevance
+                // Generate prompt instructing LLM to check relevance
                 var prompt = AIConstants.IsPostRelevant(content, topic);
 
-                // Call the LLM service to get a response (expected "true" or "false")
+                // Call the LLM service to get a response ("true" or "false")
                 var result = await _llmService.GenerateTextAsync(prompt);
 
-                // Parse the result safely
+                // Safely parse the result
                 return bool.Parse(result.Trim());
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // Log the exception in future versions if needed
-                // Return false on failure to ensure non-relevant default
+                // On error, default to true (consider content relevant)
                 return true;
             }
         }
@@ -65,75 +62,69 @@ namespace Taskly.Infrastructure.Services
         /// <summary>
         /// Converts a base64-encoded image into text using AI OCR.
         /// </summary>
-        /// <param name="base64Image">Base64 string representation of the image.</param>
-        /// <returns>Extracted text, or null if conversion fails.</returns>
+        /// <param name="base64Image">The image encoded as a base64 string.</param>
+        /// <returns>The extracted text, or null if conversion fails.</returns>
         public async Task<string> ConvertImageToText(string base64Image)
         {
             try
             {
-                // Get prompt for image-to-text conversion
-                var prompts = AIConstants.ConvertImageToTextPrompt();
+                // Build prompt for image-to-text conversion
+                var prompt = AIConstants.ConvertImageToTextPrompt();
 
-                // Call the LLM service to extract text from the image
-                var response = await _llmService.GenerateTextFromImageAsync(prompts, base64Image);
-
-                return response;
+                // Use LLM service to extract text from the image
+                return await _llmService.GenerateTextFromImageAsync(prompt, base64Image);
             }
             catch (Exception)
             {
-                // Return null if extraction fails
+                // Return null on failure
                 return null;
             }
         }
 
         /// <summary>
-        /// Generates a personalized direct message for a lead based on their profile/content.
+        /// Generates a personalized direct message for a lead based on profile or search info.
         /// </summary>
-        /// <param name="searchDto">DTO containing lead/search information.</param>
-        /// <returns>Generated message text, or null on failure.</returns>
+        /// <param name="aiDto">DTO containing lead/search data.</param>
+        /// <returns>The generated message, or null if generation fails.</returns>
         public async Task<string> GenerateDirectMessageAsync(AiDto aiDto)
         {
             try
             {
-                // Build prompt for DM generation
-                var prompts = AIConstants.BuildDirectMessagePrompt(aiDto);
+                // Build prompt to instruct LLM to create a personalized message
+                var prompt = AIConstants.BuildDirectMessagePrompt(aiDto);
 
-                // Call LLM to generate text
-                var response = await _llmService.GenerateTextAsync(prompts);
-
-                return response;
+                // Generate message using LLM
+                return await _llmService.GenerateTextAsync(prompt);
             }
             catch (Exception)
             {
-                // Fail silently; return null
+                // Fail silently
                 return null;
             }
         }
 
         /// <summary>
-        /// Generates structured post content (PostContentDto) from raw input text.
-        /// Useful for creating messages, captions, or scraping content for DMs.
+        /// Generates structured post content from raw input text.
+        /// Useful for automated messaging, captions, or scraping content for DMs.
         /// </summary>
-        /// <param name="content">Raw content to generate structured text from.</param>
-        /// <returns>List of PostContentDto objects or null on failure.</returns>
+        /// <param name="content">Raw input text to transform into structured content.</param>
+        /// <returns>A list of <see cref="PostContentDto"/> objects, or null if generation fails.</returns>
         public async Task<List<PostContentDto>> GeneratePostsTextContentAsync(string content)
         {
             try
             {
-                // Build the prompt to instruct AI to create structured post content
-                var prompts = AIConstants.PostContentInstructor(content);
+                // Build prompt instructing LLM to generate structured content
+                var prompt = AIConstants.PostContentInstructor(content);
 
-                // Call the LLM service
-                var result = await _llmService.GenerateTextAsync(prompts);
+                // Call LLM and get JSON response
+                var result = await _llmService.GenerateTextAsync(prompt);
 
-                // Deserialize JSON response into DTO list
-                var response = JsonSerializer.Deserialize<List<PostContentDto>>(result);
-
-                return response;
+                // Deserialize JSON into DTO list
+                return JsonSerializer.Deserialize<List<PostContentDto>>(result);
             }
             catch (Exception)
             {
-                // Return null if deserialization or AI call fails
+                // Return null if AI call or deserialization fails
                 return null;
             }
         }

@@ -44,11 +44,6 @@
             rtxtMessage = new RichTextBox();
             menuStrip1 = new MenuStrip();
             dataControlsToolStripMenuItem = new ToolStripMenuItem();
-            dataControlsToolStripMenuItem1 = new ToolStripMenuItem();
-            campaignsToolStripMenuItem = new ToolStripMenuItem();
-            generatedToolStripMenuItem = new ToolStripMenuItem();
-            icebreakersToolStripMenuItem = new ToolStripMenuItem();
-            customMessagesToolStripMenuItem = new ToolStripMenuItem();
             contentToolStripMenuItem = new ToolStripMenuItem();
             templatesToolStripMenuItem1 = new ToolStripMenuItem();
             customMessagesToolStripMenuItem1 = new ToolStripMenuItem();
@@ -83,6 +78,7 @@
             lblTemplates = new Label();
             cboTemplates = new ComboBox();
             btnRefresh = new Button();
+            btnCampaigns = new Button();
             grpSearchInput.SuspendLayout();
             menuStrip1.SuspendLayout();
             grpDM.SuspendLayout();
@@ -236,7 +232,7 @@
             // menuStrip1
             // 
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { dataControlsToolStripMenuItem, contentToolStripMenuItem, cookiesToolStripMenuItem1, campaignToolStripMenuItem, domainsToolStripMenuItem, integrationsToolStripMenuItem, settingsToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { dataControlsToolStripMenuItem, cookiesToolStripMenuItem1, contentToolStripMenuItem, campaignToolStripMenuItem, domainsToolStripMenuItem, integrationsToolStripMenuItem, settingsToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(1148, 28);
@@ -245,43 +241,10 @@
             // 
             // dataControlsToolStripMenuItem
             // 
-            dataControlsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { dataControlsToolStripMenuItem1, campaignsToolStripMenuItem, generatedToolStripMenuItem });
             dataControlsToolStripMenuItem.Name = "dataControlsToolStripMenuItem";
             dataControlsToolStripMenuItem.Size = new Size(114, 24);
             dataControlsToolStripMenuItem.Text = "Data Controls";
             dataControlsToolStripMenuItem.Click += dataControlsToolStripMenuItem_Click;
-            // 
-            // dataControlsToolStripMenuItem1
-            // 
-            dataControlsToolStripMenuItem1.Name = "dataControlsToolStripMenuItem1";
-            dataControlsToolStripMenuItem1.Size = new Size(197, 26);
-            dataControlsToolStripMenuItem1.Text = "Collected Leads";
-            dataControlsToolStripMenuItem1.Click += dataControlsToolStripMenuItem1_Click;
-            // 
-            // campaignsToolStripMenuItem
-            // 
-            campaignsToolStripMenuItem.Name = "campaignsToolStripMenuItem";
-            campaignsToolStripMenuItem.Size = new Size(197, 26);
-            campaignsToolStripMenuItem.Text = "Campaigns";
-            // 
-            // generatedToolStripMenuItem
-            // 
-            generatedToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { icebreakersToolStripMenuItem, customMessagesToolStripMenuItem });
-            generatedToolStripMenuItem.Name = "generatedToolStripMenuItem";
-            generatedToolStripMenuItem.Size = new Size(197, 26);
-            generatedToolStripMenuItem.Text = "Generated Data";
-            // 
-            // icebreakersToolStripMenuItem
-            // 
-            icebreakersToolStripMenuItem.Name = "icebreakersToolStripMenuItem";
-            icebreakersToolStripMenuItem.Size = new Size(210, 26);
-            icebreakersToolStripMenuItem.Text = "Icebreakers";
-            // 
-            // customMessagesToolStripMenuItem
-            // 
-            customMessagesToolStripMenuItem.Name = "customMessagesToolStripMenuItem";
-            customMessagesToolStripMenuItem.Size = new Size(210, 26);
-            customMessagesToolStripMenuItem.Text = "Custom Messages";
             // 
             // contentToolStripMenuItem
             // 
@@ -293,20 +256,20 @@
             // templatesToolStripMenuItem1
             // 
             templatesToolStripMenuItem1.Name = "templatesToolStripMenuItem1";
-            templatesToolStripMenuItem1.Size = new Size(210, 26);
+            templatesToolStripMenuItem1.Size = new Size(224, 26);
             templatesToolStripMenuItem1.Text = "Templates";
             templatesToolStripMenuItem1.Click += templatesToolStripMenuItem1_Click;
             // 
             // customMessagesToolStripMenuItem1
             // 
             customMessagesToolStripMenuItem1.Name = "customMessagesToolStripMenuItem1";
-            customMessagesToolStripMenuItem1.Size = new Size(210, 26);
+            customMessagesToolStripMenuItem1.Size = new Size(224, 26);
             customMessagesToolStripMenuItem1.Text = "Icebreakers";
             // 
             // customMessagesToolStripMenuItem2
             // 
             customMessagesToolStripMenuItem2.Name = "customMessagesToolStripMenuItem2";
-            customMessagesToolStripMenuItem2.Size = new Size(210, 26);
+            customMessagesToolStripMenuItem2.Size = new Size(224, 26);
             customMessagesToolStripMenuItem2.Text = "Custom Messages";
             customMessagesToolStripMenuItem2.Click += customMessagesToolStripMenuItem2_Click;
             // 
@@ -577,12 +540,24 @@
             btnRefresh.UseVisualStyleBackColor = true;
             btnRefresh.Click += btnRefresh_Click;
             // 
+            // btnCampaigns
+            // 
+            btnCampaigns.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnCampaigns.Location = new Point(171, 740);
+            btnCampaigns.Name = "btnCampaigns";
+            btnCampaigns.Size = new Size(153, 47);
+            btnCampaigns.TabIndex = 29;
+            btnCampaigns.Text = "Campaigns";
+            btnCampaigns.UseVisualStyleBackColor = true;
+            btnCampaigns.Click += btnCampaigns_Click;
+            // 
             // Taskly
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.White;
             ClientSize = new Size(1148, 799);
+            Controls.Add(btnCampaigns);
             Controls.Add(btnRefresh);
             Controls.Add(lblTemplates);
             Controls.Add(cboTemplates);
@@ -660,19 +635,15 @@
         private ToolStripMenuItem templatesToolStripMenuItem1;
         private ToolStripMenuItem customMessagesToolStripMenuItem1;
         private ToolStripMenuItem customMessagesToolStripMenuItem2;
-        private ToolStripMenuItem dataControlsToolStripMenuItem1;
-        private ToolStripMenuItem generatedToolStripMenuItem;
-        private ToolStripMenuItem icebreakersToolStripMenuItem;
-        private ToolStripMenuItem customMessagesToolStripMenuItem;
         private ToolStripMenuItem cookiesToolStripMenuItem1;
         private ToolStripMenuItem domainsToolStripMenuItem;
         private ToolStripMenuItem integrationsToolStripMenuItem;
         private ToolStripMenuItem googleAIGeminiToolStripMenuItem;
         private ToolStripMenuItem lMStudioToolStripMenuItem;
-        private ToolStripMenuItem campaignsToolStripMenuItem;
         private ToolStripMenuItem campaignToolStripMenuItem;
         private ToolStripMenuItem campaignToolStripMenuItem1;
         private ToolStripMenuItem sequencesToolStripMenuItem;
         private ToolStripMenuItem messagesToolStripMenuItem;
+        private Button btnCampaigns;
     }
 }

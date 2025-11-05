@@ -85,7 +85,7 @@ namespace Taskly.Api.Controllers
             try
             {
                 var settings = await _context.Settings.FirstOrDefaultAsync();
-                var httpMode = settings.DomainRotateWhenExtractingOnline;
+                var httpMode = settings.DomainRotateWhenExtractingRemotely;
                 
                 // Start extraction
                 if (httpMode)
@@ -104,7 +104,7 @@ namespace Taskly.Api.Controllers
                         var selectedDomain = domains[domainIndex % domains.Count];
                         var domainUrl = selectedDomain.Url;
 
-                        var cookieRotate = settings.CookieRotateWhenExtractingOnline;
+                        var cookieRotate = settings.CookieRotateWhenExtractingRemotely;
                         if (cookieRotate)
                         {
                             var cookieFile = await _context.CookieFiles.ToListAsync();

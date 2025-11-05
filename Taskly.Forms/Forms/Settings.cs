@@ -38,8 +38,9 @@ namespace Taskly.Forms.Forms
 
             // Bind UI controls to values
             txtDomain.Text = _settings.MasterDomainUrl;
-            ckSearchDomainRotate.Checked = _settings.DomainRotateWhenExtractingOnline;
-            ckSearchCookieRotate.Checked = _settings.CookieRotateWhenExtractingOnline;
+            ckSendMessagesOnline.Checked = _settings.SendMessagesRemotely;
+            ckSearchDomainRotate.Checked = _settings.DomainRotateWhenExtractingRemotely;
+            ckSearchCookieRotate.Checked = _settings.CookieRotateWhenExtractingRemotely;
             txtMessegingDelay.Text = _settings.MessagingDelayInMinutes.ToString();
             ckMessenginRandomCookieSelect.Checked = _settings.RandomlySelectCookiesForMessaging;
             ckGemini.Checked = _settings.APIKeyRotateWhenUsingGemini;
@@ -60,8 +61,9 @@ namespace Taskly.Forms.Forms
 
                 // Assign values from UI
                 settings.MasterDomainUrl = txtDomain.Text;
-                settings.DomainRotateWhenExtractingOnline = ckSearchDomainRotate.Checked;
-                settings.CookieRotateWhenExtractingOnline = ckSearchCookieRotate.Checked;
+                settings.SendMessagesRemotely = ckSendMessagesOnline.Checked;
+                settings.DomainRotateWhenExtractingRemotely = ckSearchDomainRotate.Checked;
+                settings.CookieRotateWhenExtractingRemotely = ckSearchCookieRotate.Checked;
                 settings.MessagingDelayInMinutes = int.Parse(txtMessegingDelay.Text);
                 settings.RandomlySelectCookiesForMessaging = ckMessenginRandomCookieSelect.Checked;
                 settings.APIKeyRotateWhenUsingGemini = ckGemini.Checked;
@@ -115,6 +117,11 @@ namespace Taskly.Forms.Forms
         private async void Settings_Load_1(object sender, EventArgs e)
         {
             await LoadSettingsAsync();
+        }
+
+        private void ckSearchCookieRotate_CheckedChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }

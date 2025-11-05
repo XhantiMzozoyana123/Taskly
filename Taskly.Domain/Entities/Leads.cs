@@ -1,13 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Taskly.Domain.Entities
 {
-    public class Leads : BaseEntity
+    public class Leads 
     {
+        [Key]
+        public int Id { get; set; }
+
         public int CampaignId { get; set; }
 
         public string Name { get; set; } = string.Empty;
@@ -27,5 +31,9 @@ namespace Taskly.Domain.Entities
         public string Status { get; set; } = string.Empty; // e.g., "New", "Contacted", "Qualified", "Converted"
 
         public DateTime PostDate { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        public DateTime UpdatedAt { get; set; } = DateTime.Now;
     }
 }

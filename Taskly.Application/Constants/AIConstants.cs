@@ -86,7 +86,7 @@ namespace Taskly.Application.Constants
             sb.AppendLine("You are an assistant for Taskly, a productivity and automation platform.");
             sb.AppendLine("Your goal is to craft a short, friendly, and personalized direct message to the user based on the following information:");
 
-            sb.AppendLine($"Client's Post: {aiDto.Leads.PostDescription}");
+            sb.AppendLine($"Client's Post: {aiDto.Lead.PostDescription}");
             sb.AppendLine($"User Query: {aiDto.Prompt}");
 
             sb.AppendLine("\nInstructions for the message:");

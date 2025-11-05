@@ -58,7 +58,7 @@ namespace Taskly.Forms.Forms
             try
             {
                 var settings = await _context.Settings.FirstOrDefaultAsync();
-                var httpMode = settings.ProcessDataOnline;
+                var httpMode = settings.ProcessDataRemotely;
 
                 SearchDto searchDto = new SearchDto
                 {
@@ -141,7 +141,8 @@ namespace Taskly.Forms.Forms
             try
             {
                 var settings = await _context.Settings.FirstOrDefaultAsync();
-
+                var httpMode = settings.SendMessagesRemotely;
+                
                 var messengerDto = new MessengerDto
                 {
                     Text = rtxtMessage.Text,
@@ -152,7 +153,11 @@ namespace Taskly.Forms.Forms
                     MessageDelay = (int)(settings.MessagingDelayInMinutes * 60 * 1000)
                 };
 
-                await _senderService.StartMessages(messengerDto);
+                if (httpMode) { }
+                else
+                {
+                    await _senderService.StartMessages(messengerDto);
+                }
             }
             catch (Exception ex)
             {
@@ -265,7 +270,7 @@ namespace Taskly.Forms.Forms
         private async void btnBulkSearch_Click(object sender, EventArgs e)
         {
             var settings = await _context.Settings.FirstOrDefaultAsync();
-            bool httpMode = settings.ProcessDataOnline;
+            bool httpMode = settings.ProcessDataRemotely;
 
             using (OpenFileDialog ofd = new OpenFileDialog())
             {
@@ -356,7 +361,13 @@ namespace Taskly.Forms.Forms
 
         private void campaignToolStripMenuItem1_Click(object sender, EventArgs e)
         {
-            Campaigns campaigns = new Campaigns(_context, _campaignService);    
+            Campaigns campaigns = new Campaigns(_context, _campaignService);
+            campaigns.Show();
+        }
+
+        private void btnCampaigns_Click(object sender, EventArgs e)
+        {
+            Campaigns campaigns = new Campaigns(_context, _campaignService);
             campaigns.Show();
         }
     }

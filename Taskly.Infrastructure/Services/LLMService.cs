@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +17,6 @@ namespace Taskly.Infrastructure.Services
     {
         private readonly HttpClient _httpClient;
         private readonly ApplicationDbContext _context;
-        private readonly IConfiguration _configuration;
 
         public LLMService(
             HttpClient httpClient,
@@ -25,7 +25,6 @@ namespace Taskly.Infrastructure.Services
         {
             _httpClient = httpClient;
             _context = context;
-            _configuration = configuration;
         }
 
         public async Task<string> GenerateTextAsync(string prompt)
@@ -48,7 +47,7 @@ namespace Taskly.Infrastructure.Services
             var json = JsonSerializer.Serialize(payload);
 
             // Get API key from configuration
-            var apiKey = "AIzaSyC_g7-42vqxQTGSa3tFVwSUIyRZJOaiG20";
+            var apiKey = await GetApiKeyAsync();
             if (string.IsNullOrWhiteSpace(apiKey))
                 throw new InvalidOperationException("Gemini API key is missing in configuration.");
 
@@ -106,7 +105,7 @@ namespace Taskly.Infrastructure.Services
             };
 
             var json = JsonSerializer.Serialize(payload);
-            var apiKey = _configuration["Gemini:ApiKey"];
+            var apiKey = await GetApiKeyAsync();
             var response = await _httpClient.PostAsync(
                 AppConstants.googleAiEndPoint + apiKey,
                 new StringContent(json, Encoding.UTF8, "application/json")
@@ -127,6 +126,38 @@ namespace Taskly.Infrastructure.Services
                 .GetString();
 
             return text ?? "No response";
+        }
+
+
+        private async Task<string> GetApiKeyAsync()
+        {
+            try
+            {
+                string apiKey = string.Empty;
+
+                var settings = await _context.Settings.FirstOrDefaultAsync();
+                bool rotateKeys = settings.APIKeyRotateWhenUsingGemini;
+                var googleAi = _context.GoogleAIs.ToList();
+
+                if (rotateKeys)
+                {
+
+                    Random r = new Random();
+                    int i = r.Next(0, googleAi.Count);
+
+                    apiKey = googleAi[i].ApiKey;
+                }
+                else
+                {
+                    apiKey = googleAi.FirstOrDefault().ApiKey;
+                }
+
+                return apiKey;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
     }
 }

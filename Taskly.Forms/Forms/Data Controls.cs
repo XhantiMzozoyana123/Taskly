@@ -50,7 +50,14 @@ namespace Taskly.Forms.Forms
                         }))
                         {
                             var importedLeads = csv.GetRecords<Leads>().ToList();
-                            _context.Leads.AddRange(importedLeads);
+
+                            // ✅ Ignore Id values to let SQL Server auto-generate them
+                            foreach (var lead in importedLeads)
+                            {
+                                lead.Id = 0; // reset identity
+                                _context.Leads.Add(lead);
+                            }
+
                             _context.SaveChanges();
                         }
 

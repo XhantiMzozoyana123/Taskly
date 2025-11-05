@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
@@ -39,7 +40,8 @@ namespace Taskly.Forms.Forms
 
         private async void btnUpload_Click(object sender, EventArgs e)
         {
-            var httpMode = _context.Settings.FirstOrDefault().ProcessDataOnline;
+            var setting = await _context.Settings.FirstOrDefaultAsync();
+            var httpMode = setting.ProcessDataRemotely;
 
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
@@ -58,15 +60,18 @@ namespace Taskly.Forms.Forms
 
                         if (httpMode)
                         {
-                            var remoteFileName = await cookieService.UploadFileAsync(fileContent);
+                            var remoteFileName = await cookieService.UploadFileRemotelyAsync(fileContent);
 
                             cookieEntity.FileName = remoteFileName.filePath;
                             cookieEntity.Content = fileContent;
+                            cookieEntity.Remote = true;
                         }
                         else
                         {
                             cookieEntity.FileName = filePath;
                             cookieEntity.Content = fileContent;
+                            cookieEntity.Remote = false;
+
                         }
                         _context.CookieFiles.Add(cookieEntity);
                         _context.SaveChanges();

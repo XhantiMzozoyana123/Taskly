@@ -1,13 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Taskly.Domain.Entities
 {
-    public class CampaignSequences : BaseEntity
+    public class CampaignSequences 
     {
+        [Key]
+        public int Id { get; set; }
+
         public int CampaignId { get; set; }
 
         public string SequenceName { get; set; } = string.Empty; // Name of the sequence
@@ -19,5 +23,10 @@ namespace Taskly.Domain.Entities
         public bool AccountRotation { get; set; } = false; // Indicates if account rotation is enabled
 
         public bool Completed { get; set; } = false; // Indicates if the sequence has been completed
+  
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+
     }
 }

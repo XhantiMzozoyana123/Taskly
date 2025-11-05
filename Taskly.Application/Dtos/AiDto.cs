@@ -11,6 +11,6 @@ namespace Taskly.Application.Dtos
     {
         public string Prompt { get; set; } = string.Empty;
 
-        public Leads Leads { get; set; } = new Leads();
+        public Leads Lead { get; set; } = new Leads();
     }
 }

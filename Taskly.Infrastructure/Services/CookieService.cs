@@ -16,24 +16,45 @@ using Taskly.Domain;
 namespace Taskly.Infrastructure.Services
 {
     /// <summary>
-    /// Handles loading browser cookies into a Playwright page.
-    /// Supports pre-authenticated sessions for automation and account rotation.
+    /// Handles browser cookie operations using Playwright.
+    /// Supports loading cookies into pre-authenticated sessions for automation,
+    /// identifying cookie domains, and uploading files for automation purposes.
     /// </summary>
     public class CookieService : ICookieService
     {
         private readonly ApplicationDbContext _context;
-        
-        public CookieService(ApplicationDbContext context) 
+
+        public CookieService(ApplicationDbContext context)
         {
             _context = context;
         }
 
+        /// <summary>
+        /// Gets all cookie file paths stored in the database.
+        /// </summary>
+        /// <returns>List of file names representing cookie files.</returns>
         public async Task<List<string>> GetCookieFilePathsAsync()
         {
-            var query = await _context.CookieFiles.ToListAsync();
-            return query.Select(c => c.FileName).ToList();
+            var settings = await _context.Settings.FirstOrDefaultAsync();
+            var httpMode = settings.ProcessDataRemotely;
+
+            if (httpMode)
+            {
+                var cookieFiles = await _context.CookieFiles.Where(x => x.Remote == true).ToListAsync();
+                return cookieFiles.Select(c => c.FileName).ToList();
+            }
+            else
+            {
+                var cookieFiles = await _context.CookieFiles.Where(x => x.Remote == false).ToListAsync();
+                return cookieFiles.Select(c => c.FileName).ToList();
+            }
         }
 
+        /// <summary>
+        /// Identifies the primary domain associated with a cookie file.
+        /// </summary>
+        /// <param name="cookiePath">Path to the cookie JSON file.</param>
+        /// <returns>The domain name of the cookie file.</returns>
         public async Task<string> IdentifyCookieSiteAsync(string cookiePath)
         {
             if (!File.Exists(cookiePath))
@@ -41,20 +62,25 @@ namespace Taskly.Infrastructure.Services
 
             try
             {
-                // Read and apply cookies
                 var cookieJson = await File.ReadAllTextAsync(cookiePath);
                 var cookies = JsonConvert.DeserializeObject<List<CookieDto>>(cookieJson)!;
-                var domain = cookies.FirstOrDefault()?.Domain?.TrimStart('.') ?? string.Empty;
 
-                return domain;
+                // Return the first cookie's domain (trim leading dot)
+                return cookies.FirstOrDefault()?.Domain?.TrimStart('.') ?? string.Empty;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ CookieService error: {ex.Message}");
+                Console.WriteLine($"❌ CookieService error (IdentifyCookieSiteAsync): {ex.Message}");
                 throw;
             }
         }
 
+        /// <summary>
+        /// Loads cookies from a file into a Playwright page for automated browsing.
+        /// </summary>
+        /// <param name="cookiePath">Path to the cookie JSON file.</param>
+        /// <param name="hideBrowser">Whether to run browser in headless mode.</param>
+        /// <returns>A tuple containing the Playwright page and browser instances.</returns>
         public async Task<(IPage page, IBrowser browser)> LoadCookieOnPageAsync(string cookiePath, bool hideBrowser)
         {
             if (!File.Exists(cookiePath))
@@ -62,13 +88,10 @@ namespace Taskly.Infrastructure.Services
 
             try
             {
-                // Initialize Playwright
+                // Initialize Playwright and launch browser
                 var playwright = await Playwright.CreateAsync();
-
-                // Launch browser
                 var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
                 {
-                    Channel = "msedge",
                     Headless = hideBrowser,
                     Args = new[]
                     {
@@ -84,17 +107,16 @@ namespace Taskly.Infrastructure.Services
                     }
                 });
 
-                // Create isolated context
+                // Create isolated browser context
                 var context = await browser.NewContextAsync(new BrowserNewContextOptions
                 {
                     IgnoreHTTPSErrors = true
                 });
 
-                // Read and apply cookies
+                // Read cookies and apply to context
                 var cookieJson = await File.ReadAllTextAsync(cookiePath);
                 var cookies = JsonConvert.DeserializeObject<List<CookieDto>>(cookieJson)!;
 
-                // Map CookieDto -> Playwright.Cookie
                 var validCookies = cookies.Select(c => new Cookie
                 {
                     Name = c.Name,
@@ -107,23 +129,22 @@ namespace Taskly.Infrastructure.Services
 
                 await context.AddCookiesAsync(validCookies);
 
-                // Open page
+                // Open a new page
                 var page = await context.NewPageAsync();
 
-                // --- FIXED: domain handling and safer navigation ---
-                var firstDomain = cookies.FirstOrDefault()?.Domain?.TrimStart('.');
+                // Determine target URL from first cookie domain
+                var firstDomain = cookies.FirstOrDefault()?.Domain?.TrimStart('.') ?? string.Empty;
                 if (!firstDomain.StartsWith("www.", StringComparison.OrdinalIgnoreCase))
                     firstDomain = "www." + firstDomain;
 
                 var targetUrl = $"https://{firstDomain}";
-
                 Console.WriteLine($"🌐 Navigating to {targetUrl}...");
 
                 try
                 {
                     await page.GotoAsync(targetUrl, new PageGotoOptions
                     {
-                        WaitUntil = WaitUntilState.DOMContentLoaded, // faster, avoids full page load wait
+                        WaitUntil = WaitUntilState.DOMContentLoaded,
                         Timeout = 90000 // 90 seconds
                     });
                 }
@@ -132,19 +153,24 @@ namespace Taskly.Infrastructure.Services
                     Console.WriteLine("⚠️ Navigation timeout — continuing with partially loaded page...");
                 }
 
-                // Optional: Take screenshot for debugging
+                // Optional debugging screenshot
                 await page.ScreenshotAsync(new() { Path = "cookie_debug.png" });
 
                 return (page, browser);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ CookieService error: {ex.Message}");
+                Console.WriteLine($"❌ CookieService error (LoadCookieOnPageAsync): {ex.Message}");
                 throw;
             }
         }
 
-        public async Task<UploadResponseDto> UploadFileAsync(string filePath)
+        /// <summary>
+        /// Uploads a file to the configured API endpoint.
+        /// </summary>
+        /// <param name="filePath">Path to the file to upload.</param>
+        /// <returns>Response DTO from the upload API.</returns>
+        public async Task<UploadResponseDto> UploadFileRemotelyAsync(string filePath)
         {
             if (!File.Exists(filePath))
                 throw new FileNotFoundException($"File not found: {filePath}");
@@ -157,7 +183,8 @@ namespace Taskly.Infrastructure.Services
             fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
             form.Add(fileContent, "file", Path.GetFileName(filePath));
 
-            string domain = _context.Settings.FirstOrDefault().MasterDomainUrl;
+            string domain = _context.Settings.FirstOrDefault()?.MasterDomainUrl
+                            ?? throw new Exception("MasterDomainUrl not configured in settings.");
             string apiUrl = $"{domain}api/fileupload/upload";
 
             var response = await httpClient.PostAsync(apiUrl, form);

@@ -6,11 +6,46 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Taskly.Domain.Migrations
 {
     /// <inheritdoc />
-    public partial class m4 : Migration
+    public partial class tasklyM : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "CampaignContents",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CampaignMessageId = table.Column<int>(type: "int", nullable: false),
+                    MessageText = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Sent = table.Column<bool>(type: "bit", nullable: false),
+                    Replied = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CampaignContents", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CampaignMessages",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CampaignSequenceId = table.Column<int>(type: "int", nullable: false),
+                    WaitTimeInMinutes = table.Column<int>(type: "int", nullable: false),
+                    MessageRotation = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CampaignMessages", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "Campaigns",
                 columns: table => new
@@ -31,6 +66,26 @@ namespace Taskly.Domain.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "CampaignSequences",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CampaignId = table.Column<int>(type: "int", nullable: false),
+                    SequenceName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    SequenceDescription = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    WaitTimeInHours = table.Column<int>(type: "int", nullable: false),
+                    AccountRotation = table.Column<bool>(type: "bit", nullable: false),
+                    Completed = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CampaignSequences", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "CookieFiles",
                 columns: table => new
                 {
@@ -38,6 +93,7 @@ namespace Taskly.Domain.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     FileName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Remote = table.Column<bool>(type: "bit", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -171,8 +227,10 @@ namespace Taskly.Domain.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     MasterDomainUrl = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DomainRotateWhenExtractingOnline = table.Column<bool>(type: "bit", nullable: false),
-                    CookieRotateWhenExtractingOnline = table.Column<bool>(type: "bit", nullable: false),
+                    ProcessDataRemotely = table.Column<bool>(type: "bit", nullable: false),
+                    SendMessagesRemotely = table.Column<bool>(type: "bit", nullable: false),
+                    DomainRotateWhenExtractingRemotely = table.Column<bool>(type: "bit", nullable: false),
+                    CookieRotateWhenExtractingRemotely = table.Column<bool>(type: "bit", nullable: false),
                     MessagingDelayInMinutes = table.Column<int>(type: "int", nullable: false),
                     RandomlySelectCookiesForMessaging = table.Column<bool>(type: "bit", nullable: false),
                     APIKeyRotateWhenUsingGemini = table.Column<bool>(type: "bit", nullable: false),
@@ -206,7 +264,16 @@ namespace Taskly.Domain.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "CampaignContents");
+
+            migrationBuilder.DropTable(
+                name: "CampaignMessages");
+
+            migrationBuilder.DropTable(
                 name: "Campaigns");
+
+            migrationBuilder.DropTable(
+                name: "CampaignSequences");
 
             migrationBuilder.DropTable(
                 name: "CookieFiles");
