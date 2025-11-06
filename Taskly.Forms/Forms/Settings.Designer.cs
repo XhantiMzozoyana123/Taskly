@@ -29,8 +29,8 @@
         private void InitializeComponent()
         {
             grpDomainOptions = new GroupBox();
-            lblMasterDomain = new Label();
             txtDomain = new TextBox();
+            lblMasterDomain = new Label();
             btnSaveChanges = new Button();
             ckGemini = new CheckBox();
             ckLMStudio = new CheckBox();
@@ -63,6 +63,14 @@
             grpDomainOptions.TabStop = false;
             grpDomainOptions.Text = "Domain Options";
             // 
+            // txtDomain
+            // 
+            txtDomain.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            txtDomain.Location = new Point(139, 37);
+            txtDomain.Name = "txtDomain";
+            txtDomain.Size = new Size(614, 27);
+            txtDomain.TabIndex = 5;
+            // 
             // lblMasterDomain
             // 
             lblMasterDomain.AutoSize = true;
@@ -71,14 +79,6 @@
             lblMasterDomain.Size = new Size(111, 20);
             lblMasterDomain.TabIndex = 2;
             lblMasterDomain.Text = "Master Domain";
-            // 
-            // txtDomain
-            // 
-            txtDomain.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            txtDomain.Location = new Point(139, 37);
-            txtDomain.Name = "txtDomain";
-            txtDomain.Size = new Size(614, 27);
-            txtDomain.TabIndex = 5;
             // 
             // btnSaveChanges
             // 
@@ -96,9 +96,9 @@
             ckGemini.AutoSize = true;
             ckGemini.Location = new Point(22, 36);
             ckGemini.Name = "ckGemini";
-            ckGemini.Size = new Size(343, 24);
+            ckGemini.Size = new Size(340, 24);
             ckGemini.TabIndex = 5;
-            ckGemini.Text = "Rotate through all API Keys when using Gemini.";
+            ckGemini.Text = "Rotate through all API Keys when using Gemini";
             ckGemini.UseVisualStyleBackColor = true;
             // 
             // ckLMStudio

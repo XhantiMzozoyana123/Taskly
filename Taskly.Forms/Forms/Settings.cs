@@ -52,24 +52,24 @@ namespace Taskly.Forms.Forms
         {
             try
             {
-                var settings = await _context.Settings.FirstOrDefaultAsync();
+                _settings = await _context.Settings.FirstOrDefaultAsync();
 
-                if (settings == null)
+                if (_settings == null)
                 {
-                    settings = new Domain.Entities.Settings();
-                    _context.Settings.Add(settings);
+                    _settings = new Domain.Entities.Settings();
+                    _context.Settings.Add(_settings);
                 }
 
                 // Assign values from UI
-                settings.MasterDomainUrl = txtDomain.Text;
-                settings.ProcessDataRemotely = ckHttpMode.Checked;
-                settings.SendMessagesRemotely = ckSendMessagesOnline.Checked;
-                settings.DomainRotateWhenExtractingRemotely = ckSearchDomainRotate.Checked;
-                settings.CookieRotateWhenExtractingRemotely = ckSearchCookieRotate.Checked;
-                settings.MessagingDelayInMinutes = int.Parse(txtMessegingDelay.Text);
-                settings.RandomlySelectCookiesForMessaging = ckMessenginRandomCookieSelect.Checked;
-                settings.APIKeyRotateWhenUsingGemini = ckGemini.Checked;
-                settings.UseLMStudio = ckLMStudio.Checked;
+                _settings.MasterDomainUrl = txtDomain.Text;
+                _settings.ProcessDataRemotely = ckHttpMode.Checked;
+                _settings.SendMessagesRemotely = ckSendMessagesOnline.Checked;
+                _settings.DomainRotateWhenExtractingRemotely = ckSearchDomainRotate.Checked;
+                _settings.CookieRotateWhenExtractingRemotely = ckSearchCookieRotate.Checked;
+                _settings.MessagingDelayInMinutes = int.Parse(txtMessegingDelay.Text);
+                _settings.RandomlySelectCookiesForMessaging = ckMessenginRandomCookieSelect.Checked;
+                _settings.APIKeyRotateWhenUsingGemini = ckGemini.Checked;
+                _settings.UseLMStudio = ckLMStudio.Checked;
 
                 await _context.SaveChangesAsync();
 

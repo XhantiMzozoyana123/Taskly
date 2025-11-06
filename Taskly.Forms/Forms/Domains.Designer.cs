@@ -70,10 +70,10 @@
             // 
             dgvDomains.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             dgvDomains.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvDomains.Location = new Point(12, 72);
+            dgvDomains.Location = new Point(12, 65);
             dgvDomains.Name = "dgvDomains";
             dgvDomains.RowHeadersWidth = 51;
-            dgvDomains.Size = new Size(1058, 453);
+            dgvDomains.Size = new Size(1058, 460);
             dgvDomains.TabIndex = 3;
             // 
             // btnDelete

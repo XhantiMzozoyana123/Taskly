@@ -12,7 +12,7 @@ using Taskly.Domain;
 namespace Taskly.Domain.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251105224130_tasklyM")]
+    [Migration("20251106113410_tasklyM")]
     partial class tasklyM
     {
         /// <inheritdoc />

@@ -91,7 +91,7 @@
             // btnAIGenMessages
             // 
             btnAIGenMessages.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            btnAIGenMessages.Location = new Point(6, 534);
+            btnAIGenMessages.Location = new Point(6, 550);
             btnAIGenMessages.Name = "btnAIGenMessages";
             btnAIGenMessages.Size = new Size(324, 39);
             btnAIGenMessages.TabIndex = 4;
