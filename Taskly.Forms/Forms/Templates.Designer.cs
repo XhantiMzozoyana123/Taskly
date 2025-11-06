@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Templates));
             rtxtMessage = new RichTextBox();
             lblName = new Label();
             cboName = new ComboBox();
@@ -122,6 +123,7 @@
             Controls.Add(cboName);
             Controls.Add(lblName);
             Controls.Add(rtxtMessage);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Templates";
             Text = "Templates";
             Load += Templates_Load;

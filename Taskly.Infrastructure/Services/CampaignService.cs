@@ -26,6 +26,58 @@ namespace Taskly.Infrastructure.Services
             _senderService = senderService;
         }
 
+        // --- NEW FUNCTIONALITY: START AND END ---
+
+        /// <summary>
+        /// Initializes a campaign, sets its status to "Active", and schedules its first execution
+        /// at the designated StartDate using Hangfire.
+        /// </summary>
+        public async Task StartCampaignAsync(Campaigns campaign)
+        {
+            // 1. Update campaign status and save. Use the defined StartDate.
+            campaign.Status = "Active";
+            campaign.UpdatedAt = DateTime.Now;
+            _context.Campaigns.Update(campaign);
+            await _context.SaveChangesAsync();
+
+            // 2. Schedule the job to run at the campaign's defined StartDate.
+            BackgroundJob.Schedule<CampaignService>(
+                service => service.RunCampaignsAsync(campaign.Id),
+                campaign.StartDate
+            );
+
+            // 3. Schedule a job to automatically complete the campaign at the EndDate.
+            if (campaign.EndDate > campaign.StartDate)
+            {
+                BackgroundJob.Schedule<CampaignService>(
+                    service => service.CompleteCampaignAsync(campaign.Id),
+                    campaign.EndDate
+                );
+            }
+        }
+
+        /// <summary>
+        /// Marks a campaign as "Completed" at its designated EndDate. Called by Hangfire.
+        /// </summary>
+        public async Task CompleteCampaignAsync(int campaignId)
+        {
+            var campaign = await _context.Campaigns.FindAsync(campaignId);
+            if (campaign == null) return;
+
+            // Only complete if currently active
+            if (campaign.Status == "Active")
+            {
+                campaign.Status = "Completed";
+                campaign.UpdatedAt = DateTime.Now;
+                _context.Campaigns.Update(campaign);
+                await _context.SaveChangesAsync();
+
+                // Note: Complex logic for stopping scheduled Hangfire jobs is not included here.
+            }
+        }
+
+        // --- EXISTING FUNCTIONALITY (with RunCampaignsAsync updated) ---
+
         /// <summary>
         /// Pauses a campaign by setting its status to "Inactive".
         /// </summary>
@@ -47,12 +99,17 @@ namespace Taskly.Infrastructure.Services
         }
 
         /// <summary>
-        /// Schedules all sequences and messages of a campaign for execution via Hangfire.
+        /// Retrieves a campaign and schedules all sequences and messages for execution via Hangfire.
+        /// Called by Hangfire in the background.
         /// </summary>
-        public async Task RunCampaignsAsync(Campaigns campaign)
+        public async Task RunCampaignsAsync(int campaignId)
         {
+            var campaign = await _context.Campaigns.FindAsync(campaignId);
+            // Check if campaign exists and is still active before processing
+            if (campaign == null || campaign.Status != "Active") return;
+
             var sequences = await _context.CampaignSequences
-                .Where(s => s.CampaignId == campaign.Id && !s.Completed)
+                .Where(s => s.CampaignId == campaignId && !s.Completed)
                 .OrderBy(s => s.Id)
                 .ToListAsync();
 
@@ -66,6 +123,7 @@ namespace Taskly.Infrastructure.Services
                 foreach (var message in messages)
                 {
                     // Schedule message processing with delay based on sequence's wait time
+                    // The job is scheduled relative to when RunCampaignsAsync executes.
                     BackgroundJob.Schedule<CampaignService>(
                         service => service.ProcessCampaignMessageAsync(sequence.Id, message.Id),
                         TimeSpan.FromHours(sequence.WaitTimeInHours)
@@ -84,7 +142,10 @@ namespace Taskly.Infrastructure.Services
                 var sequence = await _context.CampaignSequences.FindAsync(sequenceId);
                 var message = await _context.CampaignMessages.FindAsync(messageId);
 
-                if (sequence == null || message == null) return;
+                // Check campaign status again to ensure processing hasn't been paused/completed
+                var campaign = await _context.Campaigns.FindAsync(sequence?.CampaignId);
+
+                if (sequence == null || message == null || campaign?.Status != "Active") return;
 
                 // Get all active leads for this campaign sequence
                 var leads = await _context.Leads
@@ -106,7 +167,8 @@ namespace Taskly.Infrastructure.Services
                     MessegeRotation = message.MessageRotation,
                     AccountRotation = sequence.AccountRotation,
                     PrivateMode = true,
-                    MessageDelay = (int)(message.WaitTimeInMinutes * 60 * 1000) // Convert minutes to milliseconds
+                    // Convert minutes to milliseconds for the sender service
+                    MessageDelay = (int)(message.WaitTimeInMinutes * 60 * 1000)
                 };
 
                 // Send the message to all leads

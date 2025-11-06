@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Google_AI_Keys));
             dgvKeys = new DataGridView();
             btnDeleteALL = new Button();
             btnDelete = new Button();
@@ -111,6 +112,7 @@
             Controls.Add(btnDelete);
             Controls.Add(btnDeleteALL);
             Controls.Add(dgvKeys);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Google_AI_Keys";
             Text = "Google_AI_Keys";
             Load += Google_AI_Keys_Load;

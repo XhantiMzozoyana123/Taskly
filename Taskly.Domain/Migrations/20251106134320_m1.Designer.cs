@@ -12,8 +12,8 @@ using Taskly.Domain;
 namespace Taskly.Domain.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251106113410_tasklyM")]
-    partial class tasklyM
+    [Migration("20251106134320_m1")]
+    partial class m1
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

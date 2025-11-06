@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Custom_Messages));
             dgvData = new DataGridView();
             btnUpdate = new Button();
             btnDelete = new Button();
@@ -185,6 +186,7 @@
             Controls.Add(btnDelete);
             Controls.Add(btnUpdate);
             Controls.Add(dgvData);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Custom_Messages";
             Text = "Custom_Messages";
             Load += Custom_Messages_Load;

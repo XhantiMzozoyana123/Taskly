@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Data_Controls));
             dgvData = new DataGridView();
             btnUpdate = new Button();
             btnDelete = new Button();
@@ -115,6 +116,7 @@
             Controls.Add(btnDelete);
             Controls.Add(btnUpdate);
             Controls.Add(dgvData);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Data_Controls";
             Text = "Data_Controls";
             Load += Data_Controls_Load;

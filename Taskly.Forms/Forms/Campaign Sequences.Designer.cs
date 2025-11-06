@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Campaign_Sequences));
             grpCampaign = new GroupBox();
             txtName = new TextBox();
             lblName = new Label();
@@ -203,6 +204,7 @@
             Controls.Add(btnDelete);
             Controls.Add(btnUpdate);
             Controls.Add(dgvCampaigns);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Campaign_Sequences";
             Text = "Campaign_Sequences";
             Load += Campaign_Sequences_Load;

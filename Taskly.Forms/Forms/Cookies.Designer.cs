@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Cookies));
             dgvCookies = new DataGridView();
             btnUpload = new Button();
             btnDeleteALL = new Button();
@@ -101,6 +102,7 @@
             Controls.Add(btnDeleteALL);
             Controls.Add(btnUpload);
             Controls.Add(dgvCookies);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Cookies";
             Text = "Cookies";
             Load += Cookies_Load;

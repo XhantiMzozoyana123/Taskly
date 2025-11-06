@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Settings));
             grpDomainOptions = new GroupBox();
             txtDomain = new TextBox();
             lblMasterDomain = new Label();
@@ -241,6 +242,7 @@
             Controls.Add(grpAIOptions);
             Controls.Add(grpSender);
             Controls.Add(grpSearch);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Settings";
             Text = "Settings";
             Load += Settings_Load_1;

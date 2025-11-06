@@ -145,7 +145,7 @@ namespace Taskly.Forms.Forms
             }
         }
 
-        private void btnRunCampaign_Click(object sender, EventArgs e)
+        private async void btnRunCampaign_Click(object sender, EventArgs e) // ADD 'async' here
         {
             if (dgvCampaigns.CurrentRow != null)
             {
@@ -157,11 +157,20 @@ namespace Taskly.Forms.Forms
 
                 if (selectedCampaign != null)
                 {
-                    // You now have the full campaign object
-                    MessageBox.Show($"Running campaign: {selectedCampaign.Name}");
+                    // Check if the campaign is already active to prevent re-scheduling
+                    if (selectedCampaign.Status.Equals("Active", StringComparison.OrdinalIgnoreCase))
+                    {
+                        MessageBox.Show($"Campaign '{selectedCampaign.Name}' is already Active and scheduled.");
+                        return;
+                    }
 
-                    // TODO: Add your campaign execution logic here
-                    _campaignService.RunCampaignsAsync(selectedCampaign);
+                    // ⭐ CORRECT METHOD CALL ⭐
+                    await _campaignService.StartCampaignAsync(selectedCampaign);
+
+                    // Reload the grid to show the new "Active" status and start date
+                    LoadCampaigns();
+
+                    MessageBox.Show($"Campaign '{selectedCampaign.Name}' scheduled to start at {selectedCampaign.StartDate}.");
                 }
                 else
                 {

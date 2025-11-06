@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Taskly));
             grpSearchInput = new GroupBox();
             ckMultiPlatform = new CheckBox();
             cboCookie = new ComboBox();
@@ -262,14 +263,14 @@
             // templatesToolStripMenuItem1
             // 
             templatesToolStripMenuItem1.Name = "templatesToolStripMenuItem1";
-            templatesToolStripMenuItem1.Size = new Size(224, 26);
+            templatesToolStripMenuItem1.Size = new Size(210, 26);
             templatesToolStripMenuItem1.Text = "Templates";
             templatesToolStripMenuItem1.Click += templatesToolStripMenuItem1_Click;
             // 
             // customMessagesToolStripMenuItem2
             // 
             customMessagesToolStripMenuItem2.Name = "customMessagesToolStripMenuItem2";
-            customMessagesToolStripMenuItem2.Size = new Size(224, 26);
+            customMessagesToolStripMenuItem2.Size = new Size(210, 26);
             customMessagesToolStripMenuItem2.Text = "Custom Messages";
             customMessagesToolStripMenuItem2.Click += customMessagesToolStripMenuItem2_Click;
             // 
@@ -571,6 +572,7 @@
             Controls.Add(button1);
             Controls.Add(grpSearchInput);
             Controls.Add(menuStrip1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             MainMenuStrip = menuStrip1;
             Name = "Taskly";
             Text = "Taskly";

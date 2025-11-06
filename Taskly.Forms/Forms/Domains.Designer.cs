@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Domains));
             lblDomain = new Label();
             txtDomain = new TextBox();
             btnAdd = new Button();
@@ -122,6 +123,7 @@
             Controls.Add(btnAdd);
             Controls.Add(txtDomain);
             Controls.Add(lblDomain);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Domains";
             Text = "Domains";
             Load += Domains_Load;

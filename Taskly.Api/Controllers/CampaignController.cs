@@ -42,7 +42,7 @@ namespace Taskly.Api.Controllers
         {
             if (campaign == null || campaign.Id == 0) return BadRequest("Invalid campaign object");
 
-            await _campaignService.RunCampaignsAsync(campaign);
+            await _campaignService.StartCampaignAsync(campaign);
             return Ok("Campaign scheduled successfully");
         }
     }

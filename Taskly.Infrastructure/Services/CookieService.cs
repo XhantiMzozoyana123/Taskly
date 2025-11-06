@@ -23,10 +23,12 @@ namespace Taskly.Infrastructure.Services
     public class CookieService : ICookieService
     {
         private readonly ApplicationDbContext _context;
+        private readonly HttpClient _httpClient;
 
-        public CookieService(ApplicationDbContext context)
+        public CookieService(ApplicationDbContext context, HttpClient httpClient)
         {
             _context = context;
+            _httpClient = httpClient;
         }
 
         /// <summary>
@@ -57,15 +59,17 @@ namespace Taskly.Infrastructure.Services
         /// <returns>The domain name of the cookie file.</returns>
         public async Task<string> IdentifyCookieSiteAsync(string cookiePath)
         {
-            if (!File.Exists(cookiePath))
-                throw new FileNotFoundException($"Cookie file not found at: {cookiePath}");
-
             try
             {
-                var cookieJson = await File.ReadAllTextAsync(cookiePath);
-                var cookies = JsonConvert.DeserializeObject<List<CookieDto>>(cookieJson)!;
+                var settings = await _context.Settings.FirstOrDefaultAsync();
+                string cookieJson = string.Empty;
 
-                // Return the first cookie's domain (trim leading dot)
+                if (settings.ProcessDataRemotely)
+                    cookieJson = await _httpClient.GetStringAsync(cookiePath);
+                else
+                    cookieJson = await File.ReadAllTextAsync(cookiePath);
+                
+                var cookies = JsonConvert.DeserializeObject<List<CookieDto>>(cookieJson)!;
                 return cookies.FirstOrDefault()?.Domain?.TrimStart('.') ?? string.Empty;
             }
             catch (Exception ex)
@@ -83,15 +87,13 @@ namespace Taskly.Infrastructure.Services
         /// <returns>A tuple containing the Playwright page and browser instances.</returns>
         public async Task<(IPage page, IBrowser browser)> LoadCookieOnPageAsync(string cookiePath, bool hideBrowser)
         {
-            if (!File.Exists(cookiePath))
-                throw new FileNotFoundException($"Cookie file not found at: {cookiePath}");
-
             try
             {
                 // Initialize Playwright and launch browser
                 var playwright = await Playwright.CreateAsync();
                 var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
                 {
+                    Channel = "msedge",
                     Headless = hideBrowser,
                     Args = new[]
                     {
@@ -113,9 +115,23 @@ namespace Taskly.Infrastructure.Services
                     IgnoreHTTPSErrors = true
                 });
 
+                List<CookieDto> cookies = new List<CookieDto>();
+                var settings = await _context.Settings.FirstOrDefaultAsync();
+                string cookieJson = string.Empty;
+                
                 // Read cookies and apply to context
-                var cookieJson = await File.ReadAllTextAsync(cookiePath);
-                var cookies = JsonConvert.DeserializeObject<List<CookieDto>>(cookieJson)!;
+                if (settings.ProcessDataRemotely || 
+                    settings.SendMessagesRemotely)
+                {
+                    cookieJson = await _httpClient.GetStringAsync(cookiePath);
+
+                }
+                else 
+                {
+                    cookieJson = await File.ReadAllTextAsync(cookiePath);
+                }
+
+                cookies = JsonConvert.DeserializeObject<List<CookieDto>>(cookieJson)!;
 
                 var validCookies = cookies.Select(c => new Cookie
                 {

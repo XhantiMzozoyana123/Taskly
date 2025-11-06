@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Campaign_Messages));
             grpCampaign = new GroupBox();
             lblDelay = new Label();
             txtDelay = new TextBox();
@@ -155,6 +156,7 @@
             Controls.Add(btnDelete);
             Controls.Add(btnUpdate);
             Controls.Add(dgvCampaigns);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Campaign_Messages";
             Text = "Campaign_Messages";
             Load += Campaign_Messages_Load;

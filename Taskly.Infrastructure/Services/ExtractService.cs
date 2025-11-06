@@ -27,10 +27,7 @@ namespace Taskly.Infrastructure.Services
         private readonly ITwitterService _twitterService;
         private readonly IRedditService _redditService;
         private readonly ITikTokService _tikTokService;
-
         private readonly ICookieService _cookieService;
-
-        private readonly ApplicationDbContext _context;
 
         /// <summary>
         /// Constructor for dependency injection.
@@ -42,8 +39,7 @@ namespace Taskly.Infrastructure.Services
             IRedditService redditService,
             ITikTokService tikTokService,
             IHttpContextAccessor httpContextAccessor,
-            ICookieService cookieService,
-            ApplicationDbContext context)
+            ICookieService cookieService)
         {
             _facebookService = facebookService;
             _instagramService = instagramService;
@@ -51,7 +47,6 @@ namespace Taskly.Infrastructure.Services
             _redditService = redditService;
             _tikTokService = tikTokService;
             _cookieService = cookieService;
-            _context = context;
         }
 
         public async Task ExtractAsync(SearchDto searchDto)

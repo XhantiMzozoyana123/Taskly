@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Campaign_Contents));
             grpCampaign = new GroupBox();
             rtxtDescription = new RichTextBox();
             btnMessages = new Button();
@@ -125,6 +126,7 @@
             Controls.Add(btnDelete);
             Controls.Add(btnUpdate);
             Controls.Add(dgvContent);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Campaign_Contents";
             Text = "Campaign_Contents";
             Load += Campaign_Contents_Load;
