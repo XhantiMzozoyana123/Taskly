@@ -30,7 +30,6 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Taskly));
             grpSearchInput = new GroupBox();
-            btnHybridSearch = new Button();
             ckMultiPlatform = new CheckBox();
             cboCookie = new ComboBox();
             lblCookie = new Label();
@@ -59,7 +58,6 @@
             googleAIGeminiToolStripMenuItem = new ToolStripMenuItem();
             lMStudioToolStripMenuItem = new ToolStripMenuItem();
             settingsToolStripMenuItem = new ToolStripMenuItem();
-            shortcutsToolStripMenuItem = new ToolStripMenuItem();
             button1 = new Button();
             lblContactedLeads = new Label();
             txtContactedLeads = new TextBox();
@@ -89,7 +87,6 @@
             // grpSearchInput
             // 
             grpSearchInput.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            grpSearchInput.Controls.Add(btnHybridSearch);
             grpSearchInput.Controls.Add(ckMultiPlatform);
             grpSearchInput.Controls.Add(cboCookie);
             grpSearchInput.Controls.Add(lblCookie);
@@ -109,22 +106,11 @@
             grpSearchInput.TabStop = false;
             grpSearchInput.Text = "Search Input";
             // 
-            // btnHybridSearch
-            // 
-            btnHybridSearch.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnHybridSearch.Location = new Point(912, 141);
-            btnHybridSearch.Name = "btnHybridSearch";
-            btnHybridSearch.Size = new Size(188, 43);
-            btnHybridSearch.TabIndex = 19;
-            btnHybridSearch.Text = "Hybrid Search";
-            btnHybridSearch.UseVisualStyleBackColor = true;
-            btnHybridSearch.Click += btnHybridSearch_Click;
-            // 
             // ckMultiPlatform
             // 
             ckMultiPlatform.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             ckMultiPlatform.AutoSize = true;
-            ckMultiPlatform.Location = new Point(912, 211);
+            ckMultiPlatform.Location = new Point(912, 141);
             ckMultiPlatform.Name = "ckMultiPlatform";
             ckMultiPlatform.Size = new Size(116, 24);
             ckMultiPlatform.TabIndex = 18;
@@ -201,7 +187,7 @@
             // 
             ckPrivateMode.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             ckPrivateMode.AutoSize = true;
-            ckPrivateMode.Location = new Point(912, 241);
+            ckPrivateMode.Location = new Point(912, 171);
             ckPrivateMode.Name = "ckPrivateMode";
             ckPrivateMode.Size = new Size(119, 24);
             ckPrivateMode.TabIndex = 10;
@@ -246,7 +232,7 @@
             // menuStrip1
             // 
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { dataControlsToolStripMenuItem, cookiesToolStripMenuItem1, contentToolStripMenuItem, campaignToolStripMenuItem, domainsToolStripMenuItem, integrationsToolStripMenuItem, settingsToolStripMenuItem, shortcutsToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { dataControlsToolStripMenuItem, cookiesToolStripMenuItem1, contentToolStripMenuItem, campaignToolStripMenuItem, domainsToolStripMenuItem, integrationsToolStripMenuItem, settingsToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(1148, 28);
@@ -347,13 +333,6 @@
             settingsToolStripMenuItem.Size = new Size(76, 24);
             settingsToolStripMenuItem.Text = "Settings";
             settingsToolStripMenuItem.Click += settingsToolStripMenuItem_Click;
-            // 
-            // shortcutsToolStripMenuItem
-            // 
-            shortcutsToolStripMenuItem.Name = "shortcutsToolStripMenuItem";
-            shortcutsToolStripMenuItem.Size = new Size(84, 24);
-            shortcutsToolStripMenuItem.Text = "Shortcuts";
-            shortcutsToolStripMenuItem.Click += shortcutsToolStripMenuItem_Click;
             // 
             // button1
             // 
@@ -660,7 +639,5 @@
         private ToolStripMenuItem sequencesToolStripMenuItem;
         private ToolStripMenuItem messagesToolStripMenuItem;
         private Button btnCampaigns;
-        private Button btnHybridSearch;
-        private ToolStripMenuItem shortcutsToolStripMenuItem;
     }
 }

@@ -292,11 +292,19 @@ namespace Taskly.Infrastructure.Services
 
                     // Example of custom field replacement
                     var customMessage = await _context.CustomMessages.FirstOrDefaultAsync(x => x.LeadId == lead.Id);
-                    string customMessageText = iceBreaker?.Text ?? "Hey!";
+                    string customMessageText = customMessage?.Text ?? "Hey!";
                     if (iceBreaker == null)
                     {
                         _logger.LogWarning($"No custom message found for LeadId: {lead.Id}. Using default 'Hey!'.");
                     }
+
+                    customMessageText = customMessageText
+                        .Replace("[name]", lead.Name ?? "there") // Provide a fallback for name
+                        .Replace("[descr]", lead.PostDescription ?? "their recent post") // Provide fallback
+                        .Replace("[url]", lead.PostUrl ?? "") // Provide fallback
+                        .Replace("[date]", lead.PostDate.ToString("yyyy-MM-dd")) // Format date
+                        .Replace("[icebreak]", iceBreakerText)
+                        .Replace("[custom]", customMessageText); // Example of custom field replacement
 
                     messageText = messageText
                         .Replace("[name]", lead.Name ?? "there") // Provide a fallback for name
@@ -305,8 +313,8 @@ namespace Taskly.Infrastructure.Services
                         .Replace("[date]", lead.PostDate.ToString("yyyy-MM-dd")) // Format date
                         .Replace("[icebreak]", iceBreakerText)
                         .Replace("[custom]", customMessageText); // Example of custom field replacement
-                    _logger.LogInfo($"Constructed message for '{lead.Name}' (first 100 chars): {messageText.Substring(0, Math.Min(messageText.Length, 100))}...");
 
+                    _logger.LogInfo($"Constructed message for '{lead.Name}' (first 100 chars): {messageText.Substring(0, Math.Min(messageText.Length, 100))}...");
 
                     // Build new message DTO
                     var message = new MessengerDto
