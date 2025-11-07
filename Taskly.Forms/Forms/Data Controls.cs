@@ -1,11 +1,14 @@
 ﻿using CsvHelper;
 using CsvHelper.Configuration;
+using Microsoft.Playwright;
 using System;
 using System.Formats.Asn1;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using Taskly.Application.Interfaces;
 using Taskly.Domain;
 using Taskly.Domain.Entities;
 
@@ -14,11 +17,13 @@ namespace Taskly.Forms.Forms
     public partial class Data_Controls : Form
     {
         private readonly ApplicationDbContext _context;
+        private readonly ICookieService _cookieService;
 
-        public Data_Controls(ApplicationDbContext context)
+        public Data_Controls(ApplicationDbContext context, ICookieService cookieService)
         {
             InitializeComponent();
             _context = context;
+            _cookieService = cookieService;
         }
 
         private void Data_Controls_Load(object sender, EventArgs e)
@@ -166,6 +171,50 @@ namespace Taskly.Forms.Forms
                 LoadLeads();
 
                 MessageBox.Show("All leads deleted successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private async void btnPost_Click(object sender, EventArgs e)
+        {
+            if (dgvData.CurrentRow == null)
+            {
+                MessageBox.Show("Select a lead to view their post.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            int id = (int)dgvData.CurrentRow.Cells["Id"].Value;
+            var lead = _context.Leads.FirstOrDefault(l => l.Id == id);
+
+            if (lead != null)
+            {
+                IPage page;
+                IBrowser browser;
+
+                var cookiePath = await _cookieService.GetCookieFilePathsAsync();
+                (page, browser) = await _cookieService.LoadCookieOnPageAsync(cookiePath.First(), false);
+                await page.GotoAsync(lead.PostUrl);
+            }
+        }
+
+        private async void btnProfile_Click(object sender, EventArgs e)
+        {
+            if (dgvData.CurrentRow == null)
+            {
+                MessageBox.Show("Select a lead to view their profile.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            int id = (int)dgvData.CurrentRow.Cells["Id"].Value;
+            var lead = _context.Leads.FirstOrDefault(l => l.Id == id);
+
+            if (lead != null)
+            {
+                IPage page;
+                IBrowser browser;
+
+                var cookiePath = await _cookieService.GetCookieFilePathsAsync();
+                (page, browser) = await _cookieService.LoadCookieOnPageAsync(cookiePath.First(), false);
+                await page.GotoAsync(lead.ProfileUrl);
             }
         }
     }

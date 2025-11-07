@@ -15,5 +15,7 @@ namespace Taskly.Application.Interfaces
         Task<IPage> GoToTweetsPageAsync(IPage page, SearchDto searchDto);
 
         Task<IPage> DirectMessagingAsync(IPage page, MessengerDto messengerDto);
+
+        Task<IPage> ExtractSelectedProfileAsync(IPage page);
     }
 }

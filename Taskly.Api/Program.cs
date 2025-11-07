@@ -3,6 +3,7 @@ using Hangfire.SqlServer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Taskly.Application.Interfaces;
+using Taskly.Application.Services;
 using Taskly.Domain;
 using Taskly.Infrastructure.Services;
 
@@ -48,6 +49,7 @@ builder.Services.AddScoped<IInstagramService, InstagramService>();
 builder.Services.AddScoped<ITwitterService, TwitterService>();
 builder.Services.AddScoped<IRedditService, RedditService>();
 builder.Services.AddScoped<ITikTokService, TikTokService>();
+builder.Services.AddScoped<IShortcutService, ShortcutService>();
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();

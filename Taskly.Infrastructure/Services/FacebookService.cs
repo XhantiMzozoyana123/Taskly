@@ -450,5 +450,62 @@ namespace Taskly.Infrastructure.Services
                 _logger.LogInfo("Temporary page for post description extraction closed.");
             }
         }
+
+        public async Task<IPage> ExtractSelectedProfileAsync(IPage page)
+        {
+
+            // Select the h1 element with class starting with 'html-h1'
+            var authorName = await page.TextContentAsync("h1.html-h1");
+
+            // Remove extra whitespace
+            authorName = authorName?.Trim();
+
+            Leads leads = new Leads
+            {
+                Name = authorName,
+                ProfileUrl = page.Url,
+                Status = "New",
+                Platform = "Facebook",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.Leads.Add(leads);
+            await _context.SaveChangesAsync();
+
+            return page;
+        }
+
+        public async Task<IPage> InjectMessenger(IPage page, string action)
+        {
+            Random random = new Random();
+            var lead = _context.Leads.FirstOrDefault(l => l.ProfileUrl == page.Url);
+            string initialMessage = string.Empty;
+
+            if (action == "template") {
+                var templates = await _context.Templates.ToListAsync();
+                int i = random.Next(0, templates.Count);
+                initialMessage = templates[i].Content;
+            }
+            else if(action == "icebreaker") {
+                var templates = await _context.Icebreakers.ToListAsync();
+                int i = random.Next(0, templates.Count);
+                initialMessage = templates[i].Text;
+            }
+            else
+            {
+                var custom = await _context.CustomMessages.ToListAsync();
+                int i = random.Next(0, custom.Count);
+                initialMessage = custom[i].Text;
+            }
+            
+            var dmInput = page.Locator("div[contenteditable='true'][role='textbox'][data-lexical-editor='true'][aria-placeholder='Aa']");
+            await dmInput.ClearAsync();
+            await dmInput.ClickAsync();
+
+            await page.Keyboard.TypeAsync(initialMessage);
+
+            return page;
+        }
     }
 }

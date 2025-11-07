@@ -1,6 +1,7 @@
 ﻿using CsvHelper;
 using CsvHelper.Configuration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Playwright;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -27,6 +28,7 @@ namespace Taskly.Forms.Forms
         private readonly IAiService _aiService;
         private readonly ICampaignService _campaignService;
         private readonly ICookieService _cookieService;
+        private readonly IShortcutService _shortcutService;
         private readonly IUiLogger _logger;
 
         private List<string> messageSequence = new List<string>();
@@ -37,6 +39,7 @@ namespace Taskly.Forms.Forms
             IAiService aiService,
             ICampaignService campaignService,
             ICookieService cookieService,
+            IShortcutService shortcutService,
             IUiLogger logger)
         {
             InitializeComponent();
@@ -47,11 +50,43 @@ namespace Taskly.Forms.Forms
             _aiService = aiService;
             _campaignService = campaignService;
             _cookieService = cookieService;
+            _shortcutService = shortcutService;
             _logger = logger;
 
             // Bind ListBox to the logger's BindingList
             lstLogs.DataSource = _logger.Logs;
             lstLogs.DisplayMember = "ToString"; // calls LogMessage.ToString()
+
+            // Enable form to capture key events
+            this.KeyPreview = true;
+            this.KeyDown += Taskly_KeyDown;
+
+            // Register default shortcuts
+            RegisterShortcuts();
+        }
+
+        private void RegisterShortcuts()
+        {
+            _shortcutService.RegisterShortcut("Ctrl+K", ShortcutAction.NavigateNextLead);
+            _shortcutService.RegisterShortcut("Ctrl+L", ShortcutAction.NavigatePreviousLead);
+            _shortcutService.RegisterShortcut("Ctrl+H", ShortcutAction.LaunchHybridSearchBrowser);
+            _shortcutService.RegisterShortcut("Ctrl+T", ShortcutAction.RotateTemplates);
+            _shortcutService.RegisterShortcut("Ctrl+I", ShortcutAction.RotateIcebreakers);
+            _shortcutService.RegisterShortcut("Ctrl+O", ShortcutAction.RotateCookies);
+        }
+
+
+        private async void Taskly_KeyDown(object sender, KeyEventArgs e)
+        {
+            string keyCombo = "";
+
+            if (e.Control) keyCombo += "Ctrl+";
+            if (e.Alt) keyCombo += "Alt+";
+            if (e.Shift) keyCombo += "Shift+";
+
+            keyCombo += e.KeyCode.ToString();
+
+            await _shortcutService.ExecuteShortcutAsync(keyCombo);
         }
 
         private async void btnSearch_Click(object sender, EventArgs e)
@@ -134,7 +169,7 @@ namespace Taskly.Forms.Forms
 
         private void dataControlsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Forms.Data_Controls data_Controls = new Forms.Data_Controls(_context);
+            Forms.Data_Controls data_Controls = new Forms.Data_Controls(_context, _cookieService);
             data_Controls.Show();
         }
 
@@ -147,7 +182,7 @@ namespace Taskly.Forms.Forms
                 var settings = await _context.Settings.FirstOrDefaultAsync();
                 var httpMode = settings.SendMessagesRemotely;
                 var domain = settings.MasterDomainUrl;
-                
+
                 var messengerDto = new MessengerDto
                 {
                     Text = rtxtMessage.Text,
@@ -158,7 +193,7 @@ namespace Taskly.Forms.Forms
                     MessageDelay = (int)(settings.MessagingDelayInMinutes * 60 * 1000)
                 };
 
-                if (httpMode) 
+                if (httpMode)
                 {
                     ApiConstant.SenderHttpRequest(messengerDto, domain);
                 }
@@ -219,7 +254,7 @@ namespace Taskly.Forms.Forms
 
         private void btnDataControls_Click(object sender, EventArgs e)
         {
-            Forms.Data_Controls data_Controls = new Forms.Data_Controls(_context);
+            Forms.Data_Controls data_Controls = new Forms.Data_Controls(_context, _cookieService);
             data_Controls.Show();
         }
 
@@ -340,7 +375,7 @@ namespace Taskly.Forms.Forms
 
         private void dataControlsToolStripMenuItem1_Click(object sender, EventArgs e)
         {
-            Data_Controls data_Controls = new Data_Controls(_context);
+            Data_Controls data_Controls = new Data_Controls(_context, _cookieService);
             data_Controls.Show();
         }
 
@@ -378,6 +413,21 @@ namespace Taskly.Forms.Forms
         {
             Campaigns campaigns = new Campaigns(_context, _campaignService);
             campaigns.Show();
+        }
+
+        private async void btnHybridSearch_Click(object sender, EventArgs e)
+        {
+            IPage page;
+            IBrowser browser;
+
+            var cookiePath = await _cookieService.GetCookieFilePathsAsync();
+            (page, browser) = await _cookieService.LoadCookieOnPageAsync(cookiePath.First(), false);
+        }
+
+        private void shortcutsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Shortcuts shortcuts = new Shortcuts(_shortcutService);
+            shortcuts.Show();
         }
     }
 }

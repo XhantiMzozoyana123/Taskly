@@ -57,12 +57,12 @@
             grpDomainOptions.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             grpDomainOptions.Controls.Add(txtDomain);
             grpDomainOptions.Controls.Add(lblMasterDomain);
-            grpDomainOptions.Location = new Point(12, 345);
+            grpDomainOptions.Location = new Point(12, 321);
             grpDomainOptions.Name = "grpDomainOptions";
-            grpDomainOptions.Size = new Size(776, 92);
+            grpDomainOptions.Size = new Size(776, 80);
             grpDomainOptions.TabIndex = 4;
             grpDomainOptions.TabStop = false;
-            grpDomainOptions.Text = "Domain Options";
+            grpDomainOptions.Text = "Domains";
             // 
             // txtDomain
             // 
@@ -84,7 +84,7 @@
             // btnSaveChanges
             // 
             btnSaveChanges.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnSaveChanges.Location = new Point(609, 566);
+            btnSaveChanges.Location = new Point(609, 516);
             btnSaveChanges.Name = "btnSaveChanges";
             btnSaveChanges.Size = new Size(179, 46);
             btnSaveChanges.TabIndex = 4;
@@ -117,12 +117,12 @@
             grpAIOptions.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             grpAIOptions.Controls.Add(ckLMStudio);
             grpAIOptions.Controls.Add(ckGemini);
-            grpAIOptions.Location = new Point(12, 443);
+            grpAIOptions.Location = new Point(12, 407);
             grpAIOptions.Name = "grpAIOptions";
-            grpAIOptions.Size = new Size(776, 117);
+            grpAIOptions.Size = new Size(776, 103);
             grpAIOptions.TabIndex = 7;
             grpAIOptions.TabStop = false;
-            grpAIOptions.Text = "AI Options";
+            grpAIOptions.Text = "AI";
             // 
             // label1
             // 
@@ -168,12 +168,12 @@
             grpSender.Controls.Add(ckMessenginRandomCookieSelect);
             grpSender.Controls.Add(txtMessegingDelay);
             grpSender.Controls.Add(label1);
-            grpSender.Location = new Point(12, 181);
+            grpSender.Location = new Point(12, 157);
             grpSender.Name = "grpSender";
             grpSender.Size = new Size(776, 158);
             grpSender.TabIndex = 2;
             grpSender.TabStop = false;
-            grpSender.Text = "Messaging Options";
+            grpSender.Text = "Messaging";
             // 
             // btnDownloadBatch
             // 
@@ -191,9 +191,9 @@
             ckSearchDomainRotate.AutoSize = true;
             ckSearchDomainRotate.Location = new Point(22, 73);
             ckSearchDomainRotate.Name = "ckSearchDomainRotate";
-            ckSearchDomainRotate.Size = new Size(439, 24);
+            ckSearchDomainRotate.Size = new Size(405, 24);
             ckSearchDomainRotate.TabIndex = 2;
-            ckSearchDomainRotate.Text = "Rotate through all domains when extracting batches remotely";
+            ckSearchDomainRotate.Text = "Enable domain rotation when performing bulk searching\r\n";
             ckSearchDomainRotate.UseVisualStyleBackColor = true;
             // 
             // ckSearchCookieRotate
@@ -201,9 +201,9 @@
             ckSearchCookieRotate.AutoSize = true;
             ckSearchCookieRotate.Location = new Point(22, 103);
             ckSearchCookieRotate.Name = "ckSearchCookieRotate";
-            ckSearchCookieRotate.Size = new Size(432, 24);
+            ckSearchCookieRotate.Size = new Size(398, 24);
             ckSearchCookieRotate.TabIndex = 3;
-            ckSearchCookieRotate.Text = "Rotate through all cookies when extracting batches remotely\r\n";
+            ckSearchCookieRotate.Text = "Enable cookie rotation when performing bulk searching";
             ckSearchCookieRotate.UseVisualStyleBackColor = true;
             ckSearchCookieRotate.CheckedChanged += ckSearchCookieRotate_CheckedChanged;
             // 
@@ -226,17 +226,17 @@
             grpSearch.Controls.Add(btnDownloadBatch);
             grpSearch.Location = new Point(12, 12);
             grpSearch.Name = "grpSearch";
-            grpSearch.Size = new Size(776, 163);
+            grpSearch.Size = new Size(776, 139);
             grpSearch.TabIndex = 0;
             grpSearch.TabStop = false;
-            grpSearch.Text = "Extracting Options";
+            grpSearch.Text = "Extracting";
             // 
             // Settings
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.White;
-            ClientSize = new Size(800, 624);
+            ClientSize = new Size(800, 575);
             Controls.Add(grpDomainOptions);
             Controls.Add(btnSaveChanges);
             Controls.Add(grpAIOptions);

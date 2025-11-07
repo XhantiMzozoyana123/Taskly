@@ -22,6 +22,8 @@ namespace Taskly.Application.Interfaces
 
         Task<List<string>> SelectAllFacebookFacebookGroups(IPage page, SearchDto searchDto);
 
-        // Removed: Task<string> GetPostDescriptionAsync(IPage page, string profileUrl);
+        Task<IPage> ExtractSelectedProfileAsync(IPage page);
+
+        Task<IPage> InjectMessenger(IPage page, string action);
     }
 }

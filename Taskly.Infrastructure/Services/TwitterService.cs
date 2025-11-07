@@ -290,5 +290,26 @@ namespace Taskly.Infrastructure.Services
                 _logger.LogInfo($"Lead '{item.Name}' status updated to 'Contacted' in the database.");
             }
         }
+
+        public async Task<IPage> ExtractSelectedProfileAsync(IPage page)
+        {
+            var authorContainer = await page.QuerySelectorAsync("div[dir='ltr']"); // the div containing the author name
+            var authorText = await authorContainer.TextContentAsync();
+
+            Leads leads = new Leads
+            {
+                Name = authorText,
+                ProfileUrl = page.Url,
+                Status = "New",
+                Platform = "Twitter",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            _context.Leads.Add(leads);
+            await _context.SaveChangesAsync();
+
+            return page;
+        }
     }
 }

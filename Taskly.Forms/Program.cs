@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Windows.Forms;
 using Taskly.Application.Interfaces;
+using Taskly.Application.Services;
 using Taskly.Domain;
 using Taskly.Forms.Forms;
 using Taskly.Infrastructure.Services;
@@ -58,6 +59,7 @@ namespace Taskly.Forms
                     services.AddScoped<ITwitterService, TwitterService>();
                     services.AddScoped<IRedditService, RedditService>();
                     services.AddScoped<ITikTokService, TikTokService>();
+                    services.AddScoped<IShortcutService, ShortcutService>();
 
                     // ------------------------ UI (Forms) ------------------------
                     services.AddTransient<Forms.Taskly>();

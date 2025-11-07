@@ -35,6 +35,8 @@
             btnDeleteALL = new Button();
             btnExport = new Button();
             btnImport = new Button();
+            btnProfile = new Button();
+            btnPost = new Button();
             ((System.ComponentModel.ISupportInitialize)dgvData).BeginInit();
             SuspendLayout();
             // 
@@ -46,7 +48,7 @@
             dgvData.Location = new Point(12, 12);
             dgvData.Name = "dgvData";
             dgvData.RowHeadersWidth = 51;
-            dgvData.Size = new Size(1118, 488);
+            dgvData.Size = new Size(1226, 488);
             dgvData.TabIndex = 0;
             // 
             // btnUpdate
@@ -85,7 +87,7 @@
             // btnExport
             // 
             btnExport.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            btnExport.Location = new Point(987, 506);
+            btnExport.Location = new Point(1095, 506);
             btnExport.Name = "btnExport";
             btnExport.Size = new Size(143, 38);
             btnExport.TabIndex = 5;
@@ -96,7 +98,7 @@
             // btnImport
             // 
             btnImport.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            btnImport.Location = new Point(838, 506);
+            btnImport.Location = new Point(946, 506);
             btnImport.Name = "btnImport";
             btnImport.Size = new Size(143, 38);
             btnImport.TabIndex = 4;
@@ -104,12 +106,36 @@
             btnImport.UseVisualStyleBackColor = true;
             btnImport.Click += btnImport_Click;
             // 
+            // btnProfile
+            // 
+            btnProfile.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnProfile.Location = new Point(797, 506);
+            btnProfile.Name = "btnProfile";
+            btnProfile.Size = new Size(143, 38);
+            btnProfile.TabIndex = 6;
+            btnProfile.Text = "View Profile";
+            btnProfile.UseVisualStyleBackColor = true;
+            btnProfile.Click += btnProfile_Click;
+            // 
+            // btnPost
+            // 
+            btnPost.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            btnPost.Location = new Point(648, 506);
+            btnPost.Name = "btnPost";
+            btnPost.Size = new Size(143, 38);
+            btnPost.TabIndex = 7;
+            btnPost.Text = "View Post";
+            btnPost.UseVisualStyleBackColor = true;
+            btnPost.Click += btnPost_Click;
+            // 
             // Data_Controls
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.White;
-            ClientSize = new Size(1142, 556);
+            ClientSize = new Size(1250, 556);
+            Controls.Add(btnPost);
+            Controls.Add(btnProfile);
             Controls.Add(btnExport);
             Controls.Add(btnImport);
             Controls.Add(btnDeleteALL);
@@ -132,5 +158,7 @@
         private Button btnDeleteALL;
         private Button btnExport;
         private Button btnImport;
+        private Button btnProfile;
+        private Button btnPost;
     }
 }
