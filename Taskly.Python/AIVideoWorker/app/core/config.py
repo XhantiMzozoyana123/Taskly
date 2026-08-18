@@ -63,6 +63,12 @@ class Settings:
         "AI_LTX_PROMPT",
         "real estate property tour, smooth camera motion, bright natural lighting",
     )
+    # Per-photo clip length for the AI tour in frames. 0 -> use LTX default.
+    AI_LTX_NUM_FRAMES: int = int(os.getenv("AI_LTX_NUM_FRAMES", "0"))
+    # How multiple uploaded photos become a video:
+    #   "ai"        -> animate each photo with LTX image-to-video, then crossfade
+    #   "slideshow" -> Ken Burns pan/zoom tour (no GPU). Auto-falls back if no GPU.
+    TOUR_STYLE: str = os.getenv("TOUR_STYLE", "ai")
 
     # --- Generated-video output (slideshow / property tour) ---
     # Container + codec used for the fallback (multi-image / no-GPU) path.

@@ -176,6 +176,27 @@ class VideoService:
                 data, video_path, prompt=job.prompt, model=settings.AI_MODEL
             )
 
+        # Multiple photos + GPU + TOUR_STYLE=ai -> animate each photo with the AI
+        # model (LTX image-to-video) and crossfade the shots into a living tour.
+        if (
+            len(job.images) > 1
+            and video_generator.ai_available()
+            and settings.TOUR_STYLE == "ai"
+        ):
+            try:
+                logger.info(
+                    "Building AI property tour from %d photo(s) with %s ...",
+                    len(job.images), settings.AI_MODEL.upper(),
+                )
+                return video_generator.generate_image_sequence_video(
+                    job.images, video_path, prompt=job.prompt
+                )
+            except Exception:
+                logger.warning(
+                    "AI property tour failed; falling back to Ken Burns slideshow.",
+                    exc_info=True,
+                )
+
         # Otherwise build a Ken Burns property tour from all images.
         logger.info(
             "Building a Ken Burns property tour from %d image(s) ...", len(job.images)

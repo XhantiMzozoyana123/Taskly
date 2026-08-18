@@ -32,6 +32,9 @@ services:
       AI_LTX_NUM_INFERENCE_STEPS: "30"
       AI_LTX_FPS: "24"
       AI_LTX_PROMPT: "real estate property tour, smooth camera pan, bright natural lighting"
+      AI_LTX_NUM_FRAMES: "0"
+      # "ai" -> per-photo LTX clips crossfaded (default); "slideshow" -> Ken Burns tour
+      TOUR_STYLE: ai
       # --- Property-tour slideshow (fallback when no GPU / multiple images) ---
       VIDEO_FORMAT: mp4
       SLIDESHOW_WIDTH: "1280"

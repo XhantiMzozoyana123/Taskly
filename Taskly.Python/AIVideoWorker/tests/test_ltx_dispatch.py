@@ -129,6 +129,34 @@ def test_multi_image_slideshow():
     print(f"  [ok] multi-image slideshow -> frames={frames}")
 
 
+def test_ai_tour_stitch():
+    """Multiple photos -> per-photo LTX clips -> crossfaded into one MP4 tour."""
+    video_generator._pipeline_cache.clear()
+    settings.AI_MODEL = "ltx"
+    settings.generator = lambda: None
+    video_generator._pipeline_cache["ltx"] = FakePipe(fail=False, n_frames=8)
+    video_generator._pipeline_cache["svd"] = FakePipe(fail=False)
+    ltx = video_generator._pipeline_cache["ltx"]
+
+    out = Path("generated/_ai_tour_test.mp4")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.unlink(missing_ok=True)
+    images = [
+        ("room1.jpg", _jpeg_bytes(640, 480, (220, 180, 140))),
+        ("room2.jpg", _jpeg_bytes(640, 480, (180, 200, 220))),
+        ("room3.jpg", _jpeg_bytes(640, 480, (160, 120, 90))),
+    ]
+    video_generator.generate_image_sequence_video(
+        images, out, prompt="walkthrough", fps=24, transition_duration=0.3
+    )
+    assert out.exists() and out.stat().st_size > 0, "AI tour output not written"
+    frames = _count_frames(out)
+    assert frames > 0, "AI tour has no frames"
+    assert ltx.calls == 3, f"LTX should be called once per photo (got {ltx.calls})"
+    out.unlink(missing_ok=True)
+    print(f"  [ok] AI tour -> {ltx.calls} shots, stitched frames={frames}")
+
+
 if __name__ == "__main__":
     import logging
 
@@ -137,4 +165,5 @@ if __name__ == "__main__":
     test_ltx_fallback_to_svd()
     test_explicit_svd()
     test_multi_image_slideshow()
+    test_ai_tour_stitch()
     print("ALL TESTS PASSED")

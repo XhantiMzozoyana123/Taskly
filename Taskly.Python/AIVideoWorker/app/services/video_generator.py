@@ -202,29 +202,34 @@ def _generate_with_svd(image):
     return frames, image.width, image.height
 
 
-def _generate_with_ltx(image, prompt: str):
+def _generate_with_ltx(image, prompt: str, num_frames: int = None):
     """Run LTX-Video on ``image`` (+ optional ``prompt``); return ``(frames, w, h)``.
 
-    LTX is an image-conditioned DiT video model. ``prompt`` is optional -- when
-    empty ``settings.AI_LTX_PROMPT`` is used as text conditioning. Output frames
-    are returned at LTX's native (VAE-divisible) resolution.
+    LTX is an image-conditioned DiT video model.  ``prompt`` is optional -- when
+    empty ``settings.AI_LTX_PROMPT`` is used.  ``num_frames`` is optional; when 0
+    or None LTX uses its own default frame count.  Output frames are returned at
+    LTX's native (VAE-divisible) resolution.
     """
     pipe = _get_pipeline("ltx")
     image = _resize_to_divisible(image, max_edge=1216, divisor=32)
     text = prompt or settings.AI_LTX_PROMPT
-    logger.info(
-        "LTX: animating image (%sx%s) with prompt=%r steps=%s ...",
-        image.width,
-        image.height,
-        text,
-        settings.AI_LTX_NUM_INFERENCE_STEPS,
-    )
-    result = pipe(
+    kwargs = dict(
         image=image,
         prompt=text,
         num_inference_steps=settings.AI_LTX_NUM_INFERENCE_STEPS,
         generator=settings.generator(),
     )
+    if num_frames:
+        kwargs["num_frames"] = num_frames
+    logger.info(
+        "LTX: animating image (%sx%s) with prompt=%r steps=%s frames=%s ...",
+        image.width,
+        image.height,
+        text,
+        settings.AI_LTX_NUM_INFERENCE_STEPS,
+        num_frames or "default",
+    )
+    result = pipe(**kwargs)
     frames = result.frames[0]
     return frames, image.width, image.height
 
@@ -276,6 +281,88 @@ def generate_image_to_video(
 
     return write_frames_video(
         frames, output_path, fps=fps, width=width, height=height
+    )
+
+
+def _stitch_clips(clips, canvas_w, canvas_h, transition_duration, fps):
+    """Crossfade a list of clips (each a list of PIL frames) into one sequence.
+
+    All frames are normalised to ``canvas_w`` x ``canvas_h`` and the tail of each
+    clip is blended with the head of the next, so every source frame appears
+    exactly once.  Returns BGR uint8 frames ready for encoding.
+    """
+    import cv2
+    import numpy as np
+    from PIL import Image
+
+    def _to_bgr(pil_img):
+        arr = np.array(
+            pil_img.convert("RGB").resize((canvas_w, canvas_h), Image.LANCZOS)
+        )
+        return arr[:, :, ::-1].copy()
+
+    resized = [[_to_bgr(f) for f in clip] for clip in clips]
+    if not resized:
+        return []
+    n = len(resized)
+    lens = [len(c) for c in resized]
+    min_len = max(1, min(lens))
+    requested = max(1, int(round(transition_duration * fps)))
+    t = min(requested, max(1, min_len // 2))
+
+    out = []
+    for i in range(n):
+        length = lens[i]
+        start = t if i > 0 else 0
+        end = length - t if i < n - 1 else length
+        if end > start:
+            out.extend(resized[i][start:end])
+        if i < n - 1:
+            nxt = resized[i + 1]
+            nf = min(t, length - end, len(nxt))
+            for k in range(nf):
+                a = resized[i][end + k] if end + k < length else resized[i][-1]
+                b = nxt[k]
+                alpha = (k + 1) / (nf + 1)
+                out.append(cv2.addWeighted(a, 1.0 - alpha, b, alpha, 0))
+    return out
+
+
+def generate_image_sequence_video(
+    images, output_path, prompt="", fps=None, transition_duration=None
+):
+    """Animate every uploaded photo with LTX image-to-video and crossfade the
+    resulting clips into one continuous AI property tour.
+
+    Each photo is treated as its own living shot (like OpenArt image-to-video),
+    so every room comes alive with AI-generated camera motion.  Clips are
+    normalised to the configured canvas and stitched together.
+    """
+    from PIL import Image
+
+    if not images:
+        raise ValueError("At least one image is required")
+
+    canvas_w, canvas_h = settings.SLIDESHOW_WIDTH, settings.SLIDESHOW_HEIGHT
+    fps = fps or settings.AI_LTX_FPS
+    if transition_duration is None:
+        transition_duration = settings.SLIDESHOW_TRANSITION_DURATION
+    num_frames = settings.AI_LTX_NUM_FRAMES or None
+
+    clips = []
+    for name, data in images:
+        image = Image.open(io.BytesIO(data)).convert("RGB")
+        logger.info("AI tour: animating photo '%s' ...", name)
+        frames, _, _ = _generate_with_ltx(image, prompt=prompt, num_frames=num_frames)
+        clips.append(frames)
+
+    frames_out = _stitch_clips(clips, canvas_w, canvas_h, transition_duration, fps)
+    logger.info(
+        "AI tour: %d shot(s) -> %d frames, %dx%d, %s",
+        len(clips), len(frames_out), canvas_w, canvas_h, output_path,
+    )
+    return write_frames_video(
+        frames_out, output_path, fps=fps, width=canvas_w, height=canvas_h
     )
 
 
