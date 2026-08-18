@@ -118,28 +118,43 @@ def generate_image_to_video(image_bytes: bytes, output_path: Path) -> Path:
         generator=settings.generator(),
     ).frames[0]
 
-    return _write_mp4(frames, output_path, width=image.width, height=image.height)
-
-
-def _write_mp4(frames, output_path: Path, width: int, height: int) -> Path:
-    """Write a sequence of PIL frames to an MP4 using OpenCV's mp4v codec."""
-    import cv2
-    import numpy as np
-
-    writer = cv2.VideoWriter(
-        str(output_path),
-        cv2.VideoWriter_fourcc(*"mp4v"),
-        settings.AI_FPS,
-        (width, height),
+    return write_frames_webm(
+        frames, output_path, fps=settings.AI_FPS, width=image.width, height=image.height
     )
-    if not writer.isOpened():
-        raise RuntimeError("Could not open the MP4 video writer (mp4v codec)")
+
+
+def write_frames_webm(
+    frames, output_path: Path, fps: int, width: int, height: int
+) -> Path:
+    """Write a sequence of frames to a WebM (VP9) container using PyAV.
+
+    Accepts a list of PIL Images or BGR numpy arrays (frame BGR arrays are
+    converted to RGB). WebM/VP9 is broadly playable in media players, unlike
+    the MPEG-4 (mp4v) files produced by OpenCV's writer. Returns the path.
+    """
+    import av
+    import numpy as np
+    from PIL import Image
+
+    container = av.open(str(output_path), mode="w", format="webm")
+    stream = container.add_stream("libvpx-vp9", rate=float(fps))
+    stream.width = width
+    stream.height = height
+    stream.pix_fmt = "yuv420p"
 
     try:
         for frame in frames:
-            bgr = cv2.cvtColor(np.asarray(frame), cv2.COLOR_RGB2BGR)
-            writer.write(bgr)
+            if isinstance(frame, np.ndarray):
+                pil_frame = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            else:
+                pil_frame = frame
+            video_frame = av.VideoFrame.from_image(pil_frame)
+            for packet in stream.encode(video_frame):
+                container.mux(packet)
+        # Flush the encoder.
+        for packet in stream.encode():
+            container.mux(packet)
     finally:
-        writer.release()
+        container.close()
 
     return output_path

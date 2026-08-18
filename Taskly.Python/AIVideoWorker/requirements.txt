@@ -6,6 +6,8 @@ python-multipart
 # headless build avoids X11/GUI libs (required for running in a container)
 opencv-python-headless
 numpy
+# PyAV bundles FFmpeg and is used to encode WebM (VP9) output videos.
+av
 
 # --- AI image-to-video (Stable Video Diffusion) ---
 # On a Linux GPU box install PyTorch with CUDA first, e.g.:

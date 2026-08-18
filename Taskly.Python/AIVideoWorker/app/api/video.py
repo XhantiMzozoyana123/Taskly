@@ -109,7 +109,7 @@ def get_video_status(job_id: str):
 
 @router.get("/download/{job_id}")
 def download_video(job_id: str):
-    """Download the generated MP4 for a completed job."""
+    """Download the generated WebM for a completed job."""
     job = video_service.get_job(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
@@ -120,4 +120,6 @@ def download_video(job_id: str):
     if not video_path.exists():
         raise HTTPException(status_code=404, detail="Video file not found on server")
 
-    return FileResponse(path=str(video_path), media_type="video/mp4", filename=job.video_filename)
+    return FileResponse(
+        path=str(video_path), media_type="video/webm", filename=job.video_filename
+    )

@@ -1,8 +1,9 @@
 """Video-generation service.
 
 This layer abstracts all video-creation logic from the FastAPI router.
-A video is created by assembling the uploaded images into a playable MP4
-using OpenCV: each image is shown for ``duration / len(images)`` seconds.
+A video is created by animating a single image (Stable Video Diffusion) or
+assembling the uploaded images into a slideshow; output is encoded to a
+WebM (VP9) container via PyAV so it plays in standard media players.
 
 Architecture:
 
@@ -12,7 +13,7 @@ Architecture:
         ->
     VideoService
         ->
-    Image -> MP4 assembler (OpenCV)
+    Image -> Video (SVD / slideshow) -> WebM writer (PyAV)
 """
 import time
 import uuid
@@ -142,7 +143,7 @@ class VideoService:
 
         video_dir = settings.generated_video_path
         video_dir.mkdir(parents=True, exist_ok=True)
-        video_path = video_dir / f"{job.job_id}.mp4"
+        video_path = video_dir / f"{job.job_id}.webm"
 
         if len(job.images) == 1 and video_generator.ai_available():
             name, data = job.images[0]
@@ -153,8 +154,8 @@ class VideoService:
         return self._generate_slideshow(job, video_path)
 
     def _generate_slideshow(self, job: Job, video_path: Path) -> Path:
-        """Fallback: build a slideshow MP4 by showing each uploaded image for a
-        slice of the requested duration (OpenCV writer, mp4v codec)."""
+        """Fallback: build a slideshow WebM by showing each uploaded image for a
+        slice of the requested duration (encoded with PyAV -> VP9)."""
         # Decode each uploaded image into a BGR frame.
         frames: List[np.ndarray] = []
         for name, data in job.images:
@@ -171,21 +172,10 @@ class VideoService:
 
         # Number of times each image is repeated to fill its slice of the duration.
         frames_per_image = max(1, int(job.duration * FPS / len(frames)))
+        expanded: List[np.ndarray] = []
+        for frame in frames:
+            expanded.extend([frame] * frames_per_image)
 
-        writer = cv2.VideoWriter(
-            str(video_path),
-            cv2.VideoWriter_fourcc(*"mp4v"),
-            FPS,
-            (width, height),
+        return video_generator.write_frames_webm(
+            expanded, video_path, fps=FPS, width=width, height=height
         )
-        if not writer.isOpened():
-            raise RuntimeError("Could not open the MP4 video writer (mp4v codec)")
-
-        try:
-            for frame in frames:
-                for _ in range(frames_per_image):
-                    writer.write(frame)
-        finally:
-            writer.release()
-
-        return video_path
