@@ -13,6 +13,7 @@ generator.
 import io
 import logging
 import threading
+from fractions import Fraction
 from pathlib import Path
 
 from app.core.config import settings
@@ -137,7 +138,7 @@ def write_frames_webm(
     from PIL import Image
 
     container = av.open(str(output_path), mode="w", format="webm")
-    stream = container.add_stream("libvpx-vp9", rate=float(fps))
+    stream = container.add_stream("libvpx-vp9", rate=Fraction(fps, 1))
     stream.width = width
     stream.height = height
     stream.pix_fmt = "yuv420p"
