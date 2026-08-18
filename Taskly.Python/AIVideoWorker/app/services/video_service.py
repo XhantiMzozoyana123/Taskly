@@ -1,9 +1,12 @@
-"""Video-generation service.
+﻿"""Video-generation service.
 
-This layer abstracts all video-creation logic from the FastAPI router.
-A video is created by animating a single image (Stable Video Diffusion) or
-assembling the uploaded images into a slideshow; output is encoded to a
-WebM (VP9) container via PyAV so it plays in standard media players.
+This layer abstracts all video-creation logic from the FastAPI router.  A video
+is created either by animating a single image with the configured AI model
+(LTX-Video by default, Stable Video Diffusion if AI_MODEL=svd) when a GPU
++ the model weights are available, or by assembling the uploaded images into
+a Ken Burns + cross-dissolve **property tour** -- the mode used for Airbnb-style
+viewing videos.  Output is encoded to MP4 (H.264) by default so it plays in
+every browser and on every sharing platform.
 
 Architecture:
 
@@ -12,10 +15,10 @@ Architecture:
     video.py (router)
         ->
     VideoService
-        ->
-    Image -> Video (SVD / slideshow) -> WebM writer (PyAV)
+         ->  image -> AI anim (LTX/SVD)   OR   Ken Burns property tour
+        ->  PyAV encoder (H.264 / VP9)
 """
-import time
+import logging
 import uuid
 from datetime import datetime
 from enum import Enum
@@ -23,11 +26,10 @@ from pathlib import Path
 from threading import Thread
 from typing import List, Optional, Tuple
 
-import cv2
-import numpy as np
-
 from app.core.config import settings
-from app.services import video_generator
+from app.services import video_generator, slideshow
+
+logger = logging.getLogger("aivideoworker.video_service")
 
 # Frames per second used when writing the output video.
 FPS = 24
@@ -49,11 +51,16 @@ class Job:
         prompt: str,
         duration: float,
         images: Optional[List[Tuple[str, bytes]]] = None,
+        image_duration: Optional[float] = None,
+        transition_duration: Optional[float] = None,
     ):
         self.job_id: str = str(uuid.uuid4())
         self.prompt: str = prompt
         self.duration: float = duration
         self.images: List[Tuple[str, bytes]] = images or []
+        # Optional overrides for the property-tour slideshow.
+        self.image_duration: Optional[float] = image_duration
+        self.transition_duration: Optional[float] = transition_duration
         self.status: str = JobStatus.QUEUED.value
         self.progress: int = 0
         self.video_filename: str = None
@@ -88,9 +95,17 @@ class VideoService:
         prompt: str,
         duration: float,
         images: Optional[List[Tuple[str, bytes]]] = None,
+        image_duration: Optional[float] = None,
+        transition_duration: Optional[float] = None,
     ) -> Job:
         """Create a new job and start background processing."""
-        job = Job(prompt=prompt, duration=duration, images=images)
+        job = Job(
+            prompt=prompt,
+            duration=duration,
+            images=images,
+            image_duration=image_duration,
+            transition_duration=transition_duration,
+        )
         self.jobs[job.job_id] = job
         thread = Thread(target=self._process_job, args=(job.job_id,), daemon=True)
         thread.start()
@@ -106,76 +121,70 @@ class VideoService:
         if job is None:
             return
         try:
-            print(f"INFO - Starting job {job_id}")
-
+            logger.info("Starting job %s (%d image(s))", job_id, len(job.images))
             job.status = JobStatus.PROCESSING.value
             job.progress = 25
-            time.sleep(1)
 
-            job.progress = 50
-            time.sleep(1)
-
-            # Assemble the uploaded images into a playable MP4.
             video_path = self._generate_video_from_images(job)
             job.progress = 75
-            time.sleep(1)
-
             job.video_filename = video_path.name
             job.progress = 100
             job.status = JobStatus.COMPLETED.value
-            print(f"INFO - Job {job_id} completed")
-            print(f"INFO - Video saved to {video_path}")
-
+            logger.info("Job %s completed -> %s", job_id, video_path)
         except Exception as exc:
             job.status = JobStatus.FAILED.value
             job.error = str(exc) if str(exc) else "Video generation failed"
             job.progress = 0
-            print(f"ERROR - Job {job_id} failed: {exc}")
+            logger.exception("Job %s failed: %s", job_id, exc)
+
+    def _resolve_duration(self, job: Job) -> float:
+        """Total video duration.
+
+        If ``image_duration`` is set, each photo is shown for that many seconds
+        (plus the cross-dissolve overlap) and the total is derived from it --
+        handy when you want every room to linger for the same amount of time.
+        Otherwise the explicitly requested ``job.duration`` is used.
+        """
+        n = len(job.images)
+        if job.image_duration and job.image_duration > 0 and n:
+            trans = job.transition_duration or settings.SLIDESHOW_TRANSITION_DURATION
+            return job.image_duration * n + trans * (n - 1)
+        return job.duration
 
     def _generate_video_from_images(self, job: Job) -> Path:
-        """Generate the output MP4 from the job's images.
+        """Generate the output video from the job's images.
 
-        - Exactly one image + AI available  -> animate it (Stable Video Diffusion).
-        - Otherwise                          -> slideshow fallback (OpenCV).
+        * Exactly one image + AI available -> animate it (Stable Video Diffusion).
+        * Otherwise (>=1 image, with or without a GPU) -> a Ken Burns +
+          cross-dissolve property tour (see :mod:`app.services.slideshow`).
         """
         if not job.images:
             raise ValueError("No images provided")
 
         video_dir = settings.generated_video_path
         video_dir.mkdir(parents=True, exist_ok=True)
-        video_path = video_dir / f"{job.job_id}.webm"
+        video_path = video_dir / f"{job.job_id}.{settings.VIDEO_FORMAT}"
 
+        # Single image + AI -> synthesize motion with the configured model
+        # (LTX-Video by default; SVD when AI_MODEL=svd).
         if len(job.images) == 1 and video_generator.ai_available():
             name, data = job.images[0]
-            print(f"INFO - Animating image '{name}' with Stable Video Diffusion ...")
-            return video_generator.generate_image_to_video(data, video_path)
+            logger.info(
+                "Animating image '%s' with %s ...", name, settings.AI_MODEL.upper()
+            )
+            return video_generator.generate_image_to_video(
+                data, video_path, prompt=job.prompt, model=settings.AI_MODEL
+            )
 
-        print("INFO - Using slideshow mode (needs a single image + AI model)")
-        return self._generate_slideshow(job, video_path)
-
-    def _generate_slideshow(self, job: Job, video_path: Path) -> Path:
-        """Fallback: build a slideshow WebM by showing each uploaded image for a
-        slice of the requested duration (encoded with PyAV -> VP9)."""
-        # Decode each uploaded image into a BGR frame.
-        frames: List[np.ndarray] = []
-        for name, data in job.images:
-            frame = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
-            if frame is None:
-                raise ValueError(f"Could not decode image: {name}")
-            frames.append(frame)
-
-        # Normalize all frames to the size of the first image.
-        height, width = frames[0].shape[:2]
-        for i, frame in enumerate(frames):
-            if frame.shape[:2] != (height, width):
-                frames[i] = cv2.resize(frame, (width, height))
-
-        # Number of times each image is repeated to fill its slice of the duration.
-        frames_per_image = max(1, int(job.duration * FPS / len(frames)))
-        expanded: List[np.ndarray] = []
-        for frame in frames:
-            expanded.extend([frame] * frames_per_image)
-
-        return video_generator.write_frames_webm(
-            expanded, video_path, fps=FPS, width=width, height=height
+        # Otherwise build a Ken Burns property tour from all images.
+        logger.info(
+            "Building a Ken Burns property tour from %d image(s) ...", len(job.images)
+        )
+        duration = self._resolve_duration(job)
+        return slideshow.generate_slideshow(
+            images=job.images,
+            output_path=video_path,
+            duration=duration,
+            fps=FPS,
+            transition_duration=job.transition_duration,
         )

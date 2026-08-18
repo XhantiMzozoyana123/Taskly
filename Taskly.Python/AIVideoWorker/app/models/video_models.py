@@ -22,6 +22,13 @@ class VideoGenerateJsonRequest(BaseModel):
     prompt: str = Field(default="", description="Optional text describing the video")
     duration: float = Field(default=5.0, ge=1, description="Video duration in seconds")
     images: List[JsonImageInput] = Field(..., min_items=1, description="One or more images")
+    image_duration: Optional[float] = Field(
+        default=None, ge=0,
+        description="Seconds each photo stays on screen; overrides total duration when > 0",
+    )
+    transition_duration: Optional[float] = Field(
+        default=None, ge=0, description="Seconds of cross-dissolve between photos (0 = auto)"
+    )
 
 
 class VideoGenerateResponse(BaseModel):

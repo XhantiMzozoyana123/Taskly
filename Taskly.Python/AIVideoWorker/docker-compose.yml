@@ -18,7 +18,7 @@ services:
       AI_DEVICE: cuda
       AI_MODEL_ID: stabilityai/stable-video-diffusion-img2vid
       AI_USE_FP16: "true"
-      AI_CPU_OFFLOAD: "true"
+      AI_CPU_OFFLOAD: "false"
       AI_NUM_FRAMES: "14"
       AI_FPS: "7"
       AI_DECODE_CHUNK_SIZE: "8"
@@ -26,6 +26,20 @@ services:
       AI_NOISE_AUG_STRENGTH: "0.02"
       AI_MAX_EDGE: "1024"
       AI_SEED: "42"
+      # --- AI image-to-video model selection ---
+      AI_MODEL: ltx
+      AI_LTX_MODEL_ID: Lightricks/LTX-Video
+      AI_LTX_NUM_INFERENCE_STEPS: "30"
+      AI_LTX_FPS: "24"
+      AI_LTX_PROMPT: "real estate property tour, smooth camera pan, bright natural lighting"
+      # --- Property-tour slideshow (fallback when no GPU / multiple images) ---
+      VIDEO_FORMAT: mp4
+      SLIDESHOW_WIDTH: "1280"
+      SLIDESHOW_HEIGHT: "720"
+      SLIDESHOW_TRANSITION_DURATION: "1.0"
+      SLIDESHOW_ZOOM_MIN: "0.7"
+      SLIDESHOW_ZOOM_MAX: "1.15"
+      SLIDESHOW_SEED: "42"
     # GPU access (requires nvidia-container-toolkit on the host)
     deploy:
       resources:
