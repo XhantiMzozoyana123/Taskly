@@ -1,0 +1,44 @@
+name: taskly-aivideoworker
+
+services:
+  aivideoworker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: taskly/aivideoworker:latest
+    container_name: aivideoworker
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8000"
+      GENERATED_VIDEO_DIRECTORY: generated
+      # --- AI image-to-video (Stable Video Diffusion) ---
+      AI_DEVICE: cuda
+      AI_MODEL_ID: stabilityai/stable-video-diffusion-img2vid
+      AI_USE_FP16: "true"
+      AI_CPU_OFFLOAD: "true"
+      AI_NUM_FRAMES: "14"
+      AI_FPS: "7"
+      AI_DECODE_CHUNK_SIZE: "8"
+      AI_MOTION_BUCKET_ID: "127"
+      AI_NOISE_AUG_STRENGTH: "0.02"
+      AI_MAX_EDGE: "1024"
+      AI_SEED: "42"
+    # GPU access (requires nvidia-container-toolkit on the host)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Persist generated videos and the downloaded SVD model across restarts
+    volumes:
+      - aivideo-generated:/app/generated
+      - hf-cache:/root/.cache/huggingface
+
+volumes:
+  aivideo-generated:
+  hf-cache:
