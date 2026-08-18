@@ -38,6 +38,8 @@ def ai_available() -> bool:
 def _resize_for_svd(image) -> "Image.Image":
     """Resize an image so its dimensions are multiples of 64 (SVD requires it),
     keeping the aspect ratio and fitting within the configured max edge."""
+    from PIL import Image  # lazy import keeps the module importable w/o Pillow
+
     width, height = image.size
     max_edge = settings.AI_MAX_EDGE
     scale = min(1.0, max_edge / max(width, height))
