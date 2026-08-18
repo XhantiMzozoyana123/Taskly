@@ -12,16 +12,6 @@ namespace Taskly.Domain.Entities
         [Key]
         public int Id { get; set; }
 
-        public string MasterDomainUrl { get; set; } = string.Empty;
-
-        public bool ProcessDataRemotely { get; set; } = false;
-
-        public bool SendMessagesRemotely { get; set; } = false;
-
-        public bool DomainRotateWhenExtractingRemotely { get; set; } = true;
-
-        public bool CookieRotateWhenExtractingRemotely { get; set; } = true;
-
         public int MessagingDelayInMinutes { get; set; }
 
         public bool RandomlySelectCookiesForMessaging { get; set; } = true;

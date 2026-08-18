@@ -29,9 +29,6 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Settings));
-            grpDomainOptions = new GroupBox();
-            txtDomain = new TextBox();
-            lblMasterDomain = new Label();
             btnSaveChanges = new Button();
             ckGemini = new CheckBox();
             ckLMStudio = new CheckBox();
@@ -39,52 +36,18 @@
             label1 = new Label();
             txtMessegingDelay = new TextBox();
             ckMessenginRandomCookieSelect = new CheckBox();
-            ckSendMessagesOnline = new CheckBox();
             grpSender = new GroupBox();
             btnDownloadBatch = new Button();
-            ckSearchDomainRotate = new CheckBox();
-            ckSearchCookieRotate = new CheckBox();
-            ckHttpMode = new CheckBox();
             grpSearch = new GroupBox();
-            grpDomainOptions.SuspendLayout();
             grpAIOptions.SuspendLayout();
             grpSender.SuspendLayout();
             grpSearch.SuspendLayout();
             SuspendLayout();
             // 
-            // grpDomainOptions
-            // 
-            grpDomainOptions.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            grpDomainOptions.Controls.Add(txtDomain);
-            grpDomainOptions.Controls.Add(lblMasterDomain);
-            grpDomainOptions.Location = new Point(12, 321);
-            grpDomainOptions.Name = "grpDomainOptions";
-            grpDomainOptions.Size = new Size(776, 80);
-            grpDomainOptions.TabIndex = 4;
-            grpDomainOptions.TabStop = false;
-            grpDomainOptions.Text = "Domains";
-            // 
-            // txtDomain
-            // 
-            txtDomain.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            txtDomain.Location = new Point(139, 37);
-            txtDomain.Name = "txtDomain";
-            txtDomain.Size = new Size(614, 27);
-            txtDomain.TabIndex = 5;
-            // 
-            // lblMasterDomain
-            // 
-            lblMasterDomain.AutoSize = true;
-            lblMasterDomain.Location = new Point(22, 40);
-            lblMasterDomain.Name = "lblMasterDomain";
-            lblMasterDomain.Size = new Size(111, 20);
-            lblMasterDomain.TabIndex = 2;
-            lblMasterDomain.Text = "Master Domain";
-            // 
             // btnSaveChanges
             // 
             btnSaveChanges.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnSaveChanges.Location = new Point(609, 516);
+            btnSaveChanges.Location = new Point(609, 430);
             btnSaveChanges.Name = "btnSaveChanges";
             btnSaveChanges.Size = new Size(179, 46);
             btnSaveChanges.TabIndex = 4;
@@ -117,7 +80,7 @@
             grpAIOptions.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             grpAIOptions.Controls.Add(ckLMStudio);
             grpAIOptions.Controls.Add(ckGemini);
-            grpAIOptions.Location = new Point(12, 407);
+            grpAIOptions.Location = new Point(12, 321);
             grpAIOptions.Name = "grpAIOptions";
             grpAIOptions.Size = new Size(776, 103);
             grpAIOptions.TabIndex = 7;
@@ -151,20 +114,9 @@
             ckMessenginRandomCookieSelect.Text = "Randomly select cookies when sending messages to associated accounts";
             ckMessenginRandomCookieSelect.UseVisualStyleBackColor = true;
             // 
-            // ckSendMessagesOnline
-            // 
-            ckSendMessagesOnline.AutoSize = true;
-            ckSendMessagesOnline.Location = new Point(22, 83);
-            ckSendMessagesOnline.Name = "ckSendMessagesOnline";
-            ckSendMessagesOnline.Size = new Size(209, 24);
-            ckSendMessagesOnline.TabIndex = 5;
-            ckSendMessagesOnline.Text = "Send all message remotely";
-            ckSendMessagesOnline.UseVisualStyleBackColor = true;
-            // 
             // grpSender
             // 
             grpSender.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            grpSender.Controls.Add(ckSendMessagesOnline);
             grpSender.Controls.Add(ckMessenginRandomCookieSelect);
             grpSender.Controls.Add(txtMessegingDelay);
             grpSender.Controls.Add(label1);
@@ -186,43 +138,9 @@
             btnDownloadBatch.UseVisualStyleBackColor = true;
             btnDownloadBatch.Click += btnDownloadBatch_Click;
             // 
-            // ckSearchDomainRotate
-            // 
-            ckSearchDomainRotate.AutoSize = true;
-            ckSearchDomainRotate.Location = new Point(22, 73);
-            ckSearchDomainRotate.Name = "ckSearchDomainRotate";
-            ckSearchDomainRotate.Size = new Size(405, 24);
-            ckSearchDomainRotate.TabIndex = 2;
-            ckSearchDomainRotate.Text = "Enable domain rotation when performing bulk searching\r\n";
-            ckSearchDomainRotate.UseVisualStyleBackColor = true;
-            // 
-            // ckSearchCookieRotate
-            // 
-            ckSearchCookieRotate.AutoSize = true;
-            ckSearchCookieRotate.Location = new Point(22, 103);
-            ckSearchCookieRotate.Name = "ckSearchCookieRotate";
-            ckSearchCookieRotate.Size = new Size(398, 24);
-            ckSearchCookieRotate.TabIndex = 3;
-            ckSearchCookieRotate.Text = "Enable cookie rotation when performing bulk searching";
-            ckSearchCookieRotate.UseVisualStyleBackColor = true;
-            ckSearchCookieRotate.CheckedChanged += ckSearchCookieRotate_CheckedChanged;
-            // 
-            // ckHttpMode
-            // 
-            ckHttpMode.AutoSize = true;
-            ckHttpMode.Location = new Point(22, 43);
-            ckHttpMode.Name = "ckHttpMode";
-            ckHttpMode.Size = new Size(333, 24);
-            ckHttpMode.TabIndex = 4;
-            ckHttpMode.Text = "Process all files and data extractions remotely";
-            ckHttpMode.UseVisualStyleBackColor = true;
-            // 
             // grpSearch
             // 
             grpSearch.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            grpSearch.Controls.Add(ckHttpMode);
-            grpSearch.Controls.Add(ckSearchCookieRotate);
-            grpSearch.Controls.Add(ckSearchDomainRotate);
             grpSearch.Controls.Add(btnDownloadBatch);
             grpSearch.Location = new Point(12, 12);
             grpSearch.Name = "grpSearch";
@@ -236,8 +154,7 @@
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.White;
-            ClientSize = new Size(800, 575);
-            Controls.Add(grpDomainOptions);
+            ClientSize = new Size(800, 491);
             Controls.Add(btnSaveChanges);
             Controls.Add(grpAIOptions);
             Controls.Add(grpSender);
@@ -246,22 +163,16 @@
             Name = "Settings";
             Text = "Settings";
             Load += Settings_Load_1;
-            grpDomainOptions.ResumeLayout(false);
-            grpDomainOptions.PerformLayout();
             grpAIOptions.ResumeLayout(false);
             grpAIOptions.PerformLayout();
             grpSender.ResumeLayout(false);
             grpSender.PerformLayout();
             grpSearch.ResumeLayout(false);
-            grpSearch.PerformLayout();
             ResumeLayout(false);
         }
 
         #endregion
 
-        private GroupBox grpDomainOptions;
-        private TextBox txtDomain;
-        private Label lblMasterDomain;
         private Button btnSaveChanges;
         private CheckBox ckGemini;
         private CheckBox ckLMStudio;
@@ -269,12 +180,8 @@
         private Label label1;
         private TextBox txtMessegingDelay;
         private CheckBox ckMessenginRandomCookieSelect;
-        private CheckBox ckSendMessagesOnline;
         private GroupBox grpSender;
         private Button btnDownloadBatch;
-        private CheckBox ckSearchDomainRotate;
-        private CheckBox ckSearchCookieRotate;
-        private CheckBox ckHttpMode;
         private GroupBox grpSearch;
     }
 }

@@ -135,7 +135,7 @@ namespace Taskly.Infrastructure.Services
             {
                 string apiKey = string.Empty;
 
-                var settings = await _context.Settings.FirstOrDefaultAsync();
+                var settings = await _context.Settings.FirstOrDefaultAsync() ?? new Taskly.Domain.Entities.Settings();
                 bool rotateKeys = settings.APIKeyRotateWhenUsingGemini;
                 var googleAi = _context.GoogleAIs.ToList();
 

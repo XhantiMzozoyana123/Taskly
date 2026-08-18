@@ -17,14 +17,9 @@ namespace Taskly.Forms
         [STAThread]
         static void Main()
         {
-            // 🧱 Hardcoded connection string (Somee SQL Server)
+            // 🧱 Local SQLite database (localhost)
             const string connectionString =
-                "Server=tasklydatabase.mssql.somee.com;" +
-                "Database=tasklydatabase;" +
-                "User Id=XhantiAlias1_SQLLogin_1;" +
-                "Password=8vf8hejg86;" +
-                "TrustServerCertificate=True;" +
-                "MultipleActiveResultSets=True;";
+                "Data Source=taskly.db";
 
             // ✅ Build the host with hardcoded configuration
             var host = Host.CreateDefaultBuilder()
@@ -32,14 +27,7 @@ namespace Taskly.Forms
                 {
                     // ------------------------ DbContext ------------------------
                     services.AddDbContext<ApplicationDbContext>(options =>
-                        options.UseSqlServer(connectionString, sqlOptions =>
-                        {
-                            // Enable retry logic to handle transient network failures
-                            sqlOptions.EnableRetryOnFailure(
-                                maxRetryCount: 5,
-                                maxRetryDelay: TimeSpan.FromSeconds(10),
-                                errorNumbersToAdd: null);
-                        }));
+                        options.UseSqlite(connectionString));
 
                     // ------------------------ HTTP + Infrastructure ------------------------
                     services.AddHttpClient();
@@ -58,6 +46,7 @@ namespace Taskly.Forms
                     services.AddScoped<ITwitterService, TwitterService>();
                     services.AddScoped<IRedditService, RedditService>();
                     services.AddScoped<ITikTokService, TikTokService>();
+                    services.AddScoped<IAirbnbService, AirbnbService>();
 
                     // ------------------------ UI (Forms) ------------------------
                     services.AddTransient<Forms.Taskly>();
@@ -68,6 +57,13 @@ namespace Taskly.Forms
                     logging.AddConsole();
                 })
                 .Build();
+
+            // ✅ Auto-create the local SQLite database schema at startup
+            using (var scope = host.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                dbContext.Database.EnsureCreated();
+            }
 
             ApplicationConfiguration.Initialize();
 

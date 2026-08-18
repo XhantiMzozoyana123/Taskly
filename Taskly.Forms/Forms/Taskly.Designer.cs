@@ -53,7 +53,6 @@
             campaignToolStripMenuItem1 = new ToolStripMenuItem();
             sequencesToolStripMenuItem = new ToolStripMenuItem();
             messagesToolStripMenuItem = new ToolStripMenuItem();
-            domainsToolStripMenuItem = new ToolStripMenuItem();
             integrationsToolStripMenuItem = new ToolStripMenuItem();
             googleAIGeminiToolStripMenuItem = new ToolStripMenuItem();
             lMStudioToolStripMenuItem = new ToolStripMenuItem();
@@ -79,6 +78,7 @@
             cboTemplates = new ComboBox();
             btnRefresh = new Button();
             btnCampaigns = new Button();
+            btnCopyLogs = new Button();
             grpSearchInput.SuspendLayout();
             menuStrip1.SuspendLayout();
             grpDM.SuspendLayout();
@@ -232,7 +232,7 @@
             // menuStrip1
             // 
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { dataControlsToolStripMenuItem, cookiesToolStripMenuItem1, contentToolStripMenuItem, campaignToolStripMenuItem, domainsToolStripMenuItem, integrationsToolStripMenuItem, settingsToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { dataControlsToolStripMenuItem, cookiesToolStripMenuItem1, contentToolStripMenuItem, campaignToolStripMenuItem, integrationsToolStripMenuItem, settingsToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(1148, 28);
@@ -299,13 +299,6 @@
             messagesToolStripMenuItem.Name = "messagesToolStripMenuItem";
             messagesToolStripMenuItem.Size = new Size(234, 26);
             messagesToolStripMenuItem.Text = "Campaign Messages";
-            // 
-            // domainsToolStripMenuItem
-            // 
-            domainsToolStripMenuItem.Name = "domainsToolStripMenuItem";
-            domainsToolStripMenuItem.Size = new Size(82, 24);
-            domainsToolStripMenuItem.Text = "Domains";
-            domainsToolStripMenuItem.Click += domainsToolStripMenuItem_Click;
             // 
             // integrationsToolStripMenuItem
             // 
@@ -498,11 +491,11 @@
             // btnClearLogs
             // 
             btnClearLogs.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnClearLogs.Location = new Point(948, 321);
+            btnClearLogs.Location = new Point(948, 323);
             btnClearLogs.Name = "btnClearLogs";
-            btnClearLogs.Size = new Size(188, 104);
+            btnClearLogs.Size = new Size(92, 104);
             btnClearLogs.TabIndex = 19;
-            btnClearLogs.Text = "Clear Logs";
+            btnClearLogs.Text = "Clear";
             btnClearLogs.UseVisualStyleBackColor = true;
             btnClearLogs.Click += btnClearLogs_Click;
             // 
@@ -545,12 +538,24 @@
             btnCampaigns.UseVisualStyleBackColor = true;
             btnCampaigns.Click += btnCampaigns_Click;
             // 
+            // btnCopyLogs
+            // 
+            btnCopyLogs.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnCopyLogs.Location = new Point(1044, 323);
+            btnCopyLogs.Name = "btnCopyLogs";
+            btnCopyLogs.Size = new Size(92, 104);
+            btnCopyLogs.TabIndex = 30;
+            btnCopyLogs.Text = "Copy";
+            btnCopyLogs.UseVisualStyleBackColor = true;
+            btnCopyLogs.Click += btnCopyLogs_Click;
+            // 
             // Taskly
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.White;
             ClientSize = new Size(1148, 799);
+            Controls.Add(btnCopyLogs);
             Controls.Add(btnCampaigns);
             Controls.Add(btnRefresh);
             Controls.Add(lblTemplates);
@@ -630,7 +635,6 @@
         private ToolStripMenuItem templatesToolStripMenuItem1;
         private ToolStripMenuItem customMessagesToolStripMenuItem2;
         private ToolStripMenuItem cookiesToolStripMenuItem1;
-        private ToolStripMenuItem domainsToolStripMenuItem;
         private ToolStripMenuItem integrationsToolStripMenuItem;
         private ToolStripMenuItem googleAIGeminiToolStripMenuItem;
         private ToolStripMenuItem lMStudioToolStripMenuItem;
@@ -639,5 +643,6 @@
         private ToolStripMenuItem sequencesToolStripMenuItem;
         private ToolStripMenuItem messagesToolStripMenuItem;
         private Button btnCampaigns;
+        private Button btnCopyLogs;
     }
 }

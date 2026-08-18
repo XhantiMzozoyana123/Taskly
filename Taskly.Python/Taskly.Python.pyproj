@@ -1,0 +1,81 @@
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>e80b35b8-6e09-484d-b33e-928aaf53ecf1</ProjectGuid>
+    <ProjectHome>.</ProjectHome>
+    <StartupFile>AIVideoWorker\run.py</StartupFile>
+    <SearchPath>
+    </SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <Name>Taskly.Python</Name>
+    <RootNamespace>Taskly.Python</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="AIVideoWorker\app\api\video.py" />
+    <Compile Include="AIVideoWorker\app\api\__init__.py" />
+    <Compile Include="AIVideoWorker\app\core\config.py" />
+    <Compile Include="AIVideoWorker\app\core\__init__.py" />
+    <Compile Include="AIVideoWorker\app\main.py" />
+    <Compile Include="AIVideoWorker\app\models\video_models.py" />
+    <Compile Include="AIVideoWorker\app\models\__init__.py" />
+    <Compile Include="AIVideoWorker\app\services\video_service.py" />
+    <Compile Include="AIVideoWorker\app\services\__init__.py" />
+    <Compile Include="AIVideoWorker\app\_\_init\_\_.py" />
+    <Compile Include="AIVideoWorker\app\__init__.py" />
+    <Compile Include="AIVideoWorker\run.py" />
+    <Compile Include="AIVideoWorker\__init__.py" />
+    <Compile Include="Taskly.Python.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="AIVideoWorker\" />
+    <Folder Include="AIVideoWorker\app\" />
+    <Folder Include="AIVideoWorker\app\api\" />
+    <Folder Include="AIVideoWorker\app\api\__pycache__\" />
+    <Folder Include="AIVideoWorker\app\core\" />
+    <Folder Include="AIVideoWorker\app\core\__pycache__\" />
+    <Folder Include="AIVideoWorker\app\models\" />
+    <Folder Include="AIVideoWorker\app\models\__pycache__\" />
+    <Folder Include="AIVideoWorker\app\services\" />
+    <Folder Include="AIVideoWorker\app\services\__pycache__\" />
+    <Folder Include="AIVideoWorker\app\_\" />
+    <Folder Include="AIVideoWorker\app\_\_init\" />
+    <Folder Include="AIVideoWorker\app\_\_init\_\" />
+    <Folder Include="AIVideoWorker\app\__pycache__\" />
+    <Folder Include="AIVideoWorker\generated\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="AIVideoWorker\.env" />
+    <Content Include="AIVideoWorker\.gitignore" />
+    <Content Include="AIVideoWorker\app\api\__pycache__\video.cpython-39.pyc" />
+    <Content Include="AIVideoWorker\app\api\__pycache__\__init__.cpython-39.pyc" />
+    <Content Include="AIVideoWorker\app\core\__pycache__\config.cpython-39.pyc" />
+    <Content Include="AIVideoWorker\app\core\__pycache__\__init__.cpython-39.pyc" />
+    <Content Include="AIVideoWorker\app\models\__pycache__\video_models.cpython-39.pyc" />
+    <Content Include="AIVideoWorker\app\models\__pycache__\__init__.cpython-39.pyc" />
+    <Content Include="AIVideoWorker\app\services\__pycache__\video_service.cpython-39.pyc" />
+    <Content Include="AIVideoWorker\app\services\__pycache__\__init__.cpython-39.pyc" />
+    <Content Include="AIVideoWorker\app\__pycache__\main.cpython-39.pyc" />
+    <Content Include="AIVideoWorker\app\__pycache__\__init__.cpython-39.pyc" />
+    <Content Include="AIVideoWorker\generated\1c390f6d-9565-46cd-8490-01976220e163.mp4" />
+    <Content Include="AIVideoWorker\requirements.txt" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+  <!-- Uncomment the CoreCompile target to enable the Build command in
+       Visual Studio and specify your pre- and post-build commands in
+       the BeforeBuild and AfterBuild targets below. -->
+  <!--<Target Name="CoreCompile" />-->
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+</Project>

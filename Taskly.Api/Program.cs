@@ -1,5 +1,5 @@
 ﻿using Hangfire;
-using Hangfire.SqlServer;
+using Hangfire.MemoryStorage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Taskly.Application.Interfaces;
@@ -25,12 +25,12 @@ builder.Logging.AddConsole();
 // 3️⃣ Database + Hangfire
 // -----------------------------------------------------
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddHangfire(config => config
     .UseSimpleAssemblyNameTypeSerializer()
     .UseRecommendedSerializerSettings()
-    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+    .UseMemoryStorage());
 
 builder.Services.AddHangfireServer();
 
@@ -48,6 +48,7 @@ builder.Services.AddScoped<IInstagramService, InstagramService>();
 builder.Services.AddScoped<ITwitterService, TwitterService>();
 builder.Services.AddScoped<IRedditService, RedditService>();
 builder.Services.AddScoped<ITikTokService, TikTokService>();
+builder.Services.AddScoped<IAirbnbService, AirbnbService>();
 
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
@@ -59,6 +60,15 @@ builder.Services.AddControllers();
 // 5️⃣ Build + Run
 // -----------------------------------------------------
 var app = builder.Build();
+
+// -----------------------------------------------------
+// 5.5 ✅ Auto-create the local SQLite database schema at startup
+// -----------------------------------------------------
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    dbContext.Database.EnsureCreated();
+}
 
 app.UseHttpsRedirection();
 app.UseAuthorization();

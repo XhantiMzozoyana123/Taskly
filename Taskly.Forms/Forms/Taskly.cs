@@ -12,7 +12,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Taskly.Application.Constants;
 using Taskly.Application.Dtos;
 using Taskly.Application.Interfaces;
 using Taskly.Domain;
@@ -61,10 +60,6 @@ namespace Taskly.Forms.Forms
 
             try
             {
-                var settings = await _context.Settings.FirstOrDefaultAsync();
-                var httpMode = settings.ProcessDataRemotely;
-                var domain = settings.MasterDomainUrl;
-
                 SearchDto searchDto = new SearchDto
                 {
                     Keyword = txtKeywords.Text,
@@ -72,18 +67,11 @@ namespace Taskly.Forms.Forms
                     PageNumber = int.Parse(txtPages.Text),
                     MultiPlatform = ckMultiPlatform.Checked,
                     CookiePath = cboCookie.Text,
-                    PrivateMode = ckPrivateMode.Checked,
-                    HttpMode = httpMode
+                    PrivateMode = ckPrivateMode.Checked
                 };
 
-                if (httpMode)
-                {
-                    ApiConstant.ExtractorHttpRequest(searchDto, domain);
-                }
-                else
-                {
-                    await _extractService.ExtractAsync(searchDto);
-                }
+                // Scrape runs locally on this machine — no remote/VPS requests.
+                await _extractService.ExtractAsync(searchDto);
             }
             catch (Exception ex)
             {
@@ -129,7 +117,7 @@ namespace Taskly.Forms.Forms
 
         private void cookiesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Forms.Cookies cookies = new Forms.Cookies(_context, _cookieService);
+            Forms.Cookies cookies = new Forms.Cookies(_context);
             cookies.Show();
         }
 
@@ -145,9 +133,7 @@ namespace Taskly.Forms.Forms
 
             try
             {
-                var settings = await _context.Settings.FirstOrDefaultAsync();
-                var httpMode = settings.SendMessagesRemotely;
-                var domain = settings.MasterDomainUrl;
+                var settings = await _context.Settings.FirstOrDefaultAsync() ?? new global::Taskly.Domain.Entities.Settings();
 
                 var messengerDto = new MessengerDto
                 {
@@ -159,14 +145,8 @@ namespace Taskly.Forms.Forms
                     MessageDelay = (int)(settings.MessagingDelayInMinutes * 60 * 1000)
                 };
 
-                if (httpMode)
-                {
-                    ApiConstant.SenderHttpRequest(messengerDto, domain);
-                }
-                else
-                {
-                    await _senderService.StartMessages(messengerDto);
-                }
+                // Messaging runs locally on this machine — no remote/VPS requests.
+                await _senderService.StartMessages(messengerDto);
             }
             catch (Exception ex)
             {
@@ -278,10 +258,6 @@ namespace Taskly.Forms.Forms
 
         private async void btnBulkSearch_Click(object sender, EventArgs e)
         {
-            var settings = await _context.Settings.FirstOrDefaultAsync();
-            bool httpMode = settings.ProcessDataRemotely;
-            string domain = settings.MasterDomainUrl;
-
             using (OpenFileDialog ofd = new OpenFileDialog())
             {
                 ofd.Filter = "CSV files (*.csv)|*.csv";
@@ -303,18 +279,10 @@ namespace Taskly.Forms.Forms
 
                         MessageBox.Show($"Loaded {searchList.Count} searches. Starting now...", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                        if (httpMode)
+                        // All scraping runs locally on this machine — no remote/VPS requests.
+                        foreach (var item in searchList)
                         {
-                            ApiConstant.BatchExtractorHttpRequest(searchList, domain);
-                            MessageBox.Show("All searches are in progress via HTTP.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            return;
-                        }
-                        else
-                        {
-                            foreach (var item in searchList)
-                            {
-                                await _extractService.ExtractAsync(item);
-                            }
+                            await _extractService.ExtractAsync(item);
                         }
 
                         MessageBox.Show("All searches completed successfully.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -359,14 +327,8 @@ namespace Taskly.Forms.Forms
 
         private void cookiesToolStripMenuItem1_Click(object sender, EventArgs e)
         {
-            Cookies cookies = new Cookies(_context, _cookieService);
+            Cookies cookies = new Cookies(_context);
             cookies.Show();
-        }
-
-        private void domainsToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Domains domains = new Domains(_context);
-            domains.Show();
         }
 
         private void campaignToolStripMenuItem1_Click(object sender, EventArgs e)
@@ -388,6 +350,30 @@ namespace Taskly.Forms.Forms
 
             var cookiePath = await _cookieService.GetCookieFilePathsAsync();
             (page, browser) = await _cookieService.LoadCookieOnPageAsync(cookiePath.First(), false);
+        }
+
+        private void btnCopyLogs_Click(object sender, EventArgs e)
+        {
+            CopyLogs();
+        }
+
+        public void CopyLogs()
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(CopyLogs));
+                return;
+            }
+
+            if (lstLogs.DataSource is BindingList<string> logs)
+            {
+                string logText = string.Join(Environment.NewLine, logs);
+
+                if (!string.IsNullOrWhiteSpace(logText))
+                {
+                    Clipboard.SetText(logText);
+                }
+            }
         }
     }
 }

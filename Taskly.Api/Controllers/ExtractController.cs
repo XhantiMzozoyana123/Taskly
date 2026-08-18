@@ -1,11 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System;
 using System.Threading.Tasks;
-using Taskly.Application.Constants;
 using Taskly.Application.Dtos;
 using Taskly.Application.Interfaces;
-using Taskly.Domain;
 
 namespace Taskly.Api.Controllers
 {
@@ -13,16 +10,13 @@ namespace Taskly.Api.Controllers
     [Route("api/[controller]")]
     public class ExtractController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
         private readonly IExtractService _extractService;
         private readonly IUiLogger _logger;
 
-        public ExtractController(IExtractService extractService, IUiLogger logger, ApplicationDbContext context)
+        public ExtractController(IExtractService extractService, IUiLogger logger)
         {
             _extractService = extractService;
             _logger = logger;
-
-            _context = context;
         }
 
         /// <summary>
@@ -84,52 +78,11 @@ namespace Taskly.Api.Controllers
 
             try
             {
-                var settings = await _context.Settings.FirstOrDefaultAsync();
-                var httpMode = settings.DomainRotateWhenExtractingRemotely;
-                
-                // Start extraction
-                if (httpMode)
+                // All extraction runs locally on this machine — no remote/VPS requests.
+                foreach (var searchDto in searchDtos)
                 {
-                    var domains = await _context.Domains.ToListAsync();
-
-                    int domainCount = domains.Count;
-                    int domainIndex = 0; // tracks which domain to use next
-
-                    for (int i = 0; i < searchDtos.Count; i++)
-                    {
-                        var searchDto = searchDtos[i];
-                        searchDto.PrivateMode = true;
-
-                        // Round-robin selection
-                        var selectedDomain = domains[domainIndex % domains.Count];
-                        var domainUrl = selectedDomain.Url;
-
-                        var cookieRotate = settings.CookieRotateWhenExtractingRemotely;
-                        if (cookieRotate)
-                        {
-                            var cookieFile = await _context.CookieFiles.ToListAsync();
-
-                            var random = new Random();
-                            int number = random.Next(0, cookieFile.Count);
-
-                            searchDto.CookiePath = cookieFile[number].FileName;
-                        }
-
-                        // Perform extraction
-                        ApiConstant.ExtractorHttpRequest(searchDto, domainUrl);
-
-                        // Move to next domain
-                        domainIndex++;
-                    }
-
-                }
-                else
-                {
-                    foreach (var searchDto in searchDtos)
-                    {
-                        searchDto.PrivateMode = true;
-                        await _extractService.ExtractAsync(searchDto);
-                    }
+                    searchDto.PrivateMode = true;
+                    await _extractService.ExtractAsync(searchDto);
                 }
 
                 _logger.LogInfo("Extraction completed successfully.");

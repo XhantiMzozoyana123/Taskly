@@ -13,10 +13,10 @@ namespace Taskly.Application.Interfaces
     {
         Task<(IPage page, IBrowser browser)> LoadCookieOnPageAsync(string cookiePath, bool hideBrowser);
 
+        Task<(IPage page, IBrowser browser)> LaunchPageAsync(bool hideBrowser);
+
         Task<string> IdentifyCookieSiteAsync(string cookiePath);
 
         Task<List<string>> GetCookieFilePathsAsync();
-
-        Task<UploadResponseDto> UploadFileRemotelyAsync(string filePath);
     }
 }

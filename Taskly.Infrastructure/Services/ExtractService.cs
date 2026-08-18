@@ -17,7 +17,7 @@ namespace Taskly.Infrastructure.Services
 {
     /// <summary>
     /// ExtractService coordinates scraping/extraction of content from multiple social media platforms.
-    /// Supports Facebook, Instagram, Twitter, Reddit, and TikTok.
+    /// Supports Facebook, Instagram, Twitter, Reddit, TikTok, and Airbnb.
     /// Leverages platform-specific services for the actual scraping logic.
     /// </summary>
     public class ExtractService : IExtractService
@@ -27,6 +27,7 @@ namespace Taskly.Infrastructure.Services
         private readonly ITwitterService _twitterService;
         private readonly IRedditService _redditService;
         private readonly ITikTokService _tikTokService;
+        private readonly IAirbnbService _airbnbService;
         private readonly ICookieService _cookieService;
 
         /// <summary>
@@ -38,6 +39,7 @@ namespace Taskly.Infrastructure.Services
             ITwitterService twitterService,
             IRedditService redditService,
             ITikTokService tikTokService,
+            IAirbnbService airbnbService,
             IHttpContextAccessor httpContextAccessor,
             ICookieService cookieService)
         {
@@ -46,6 +48,7 @@ namespace Taskly.Infrastructure.Services
             _twitterService = twitterService;
             _redditService = redditService;
             _tikTokService = tikTokService;
+            _airbnbService = airbnbService;
             _cookieService = cookieService;
         }
 
@@ -76,6 +79,9 @@ namespace Taskly.Infrastructure.Services
                 searchDto.CookiePath = cookiePaths.Where(p => p.Contains("tiktok.com")).FirstOrDefault() ?? string.Empty;
                 tasks.Add(_tikTokService.SearchAsync(searchDto));    // Scrape TikTok
 
+                searchDto.CookiePath = cookiePaths.Where(p => p.Contains("airbnb.com")).FirstOrDefault() ?? string.Empty;
+                tasks.Add(_airbnbService.SearchAsync(searchDto));    // Scrape Airbnb
+
                 // Await all platform tasks to finish
                 await Task.WhenAll(tasks);
             }
@@ -101,6 +107,9 @@ namespace Taskly.Infrastructure.Services
                         break;
                     case "tiktok.com":
                         await _tikTokService.SearchAsync(searchDto);
+                        break;
+                    case "airbnb.com":
+                        await _airbnbService.SearchAsync(searchDto);
                         break;
                     default:
                         // Throw error if the platform is not supported

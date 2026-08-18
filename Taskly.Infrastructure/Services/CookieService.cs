@@ -5,9 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Taskly.Application.Dtos;
 using Taskly.Application.Interfaces;
@@ -18,42 +15,30 @@ namespace Taskly.Infrastructure.Services
     /// <summary>
     /// Handles browser cookie operations using Playwright.
     /// Supports loading cookies into pre-authenticated sessions for automation,
-    /// identifying cookie domains, and uploading files for automation purposes.
+    /// and identifying cookie domains. All operations run strictly on the local
+    /// machine — no remote requests are made.
     /// </summary>
     public class CookieService : ICookieService
     {
         private readonly ApplicationDbContext _context;
-        private readonly HttpClient _httpClient;
 
-        public CookieService(ApplicationDbContext context, HttpClient httpClient)
+        public CookieService(ApplicationDbContext context)
         {
             _context = context;
-            _httpClient = httpClient;
         }
 
         /// <summary>
-        /// Gets all cookie file paths stored in the database.
+        /// Gets all local cookie file paths stored in the database.
         /// </summary>
         /// <returns>List of file names representing cookie files.</returns>
         public async Task<List<string>> GetCookieFilePathsAsync()
         {
-            var settings = await _context.Settings.FirstOrDefaultAsync();
-            var httpMode = settings.ProcessDataRemotely;
-
-            if (httpMode)
-            {
-                var cookieFiles = await _context.CookieFiles.Where(x => x.Remote == true).ToListAsync();
-                return cookieFiles.Select(c => c.FileName).ToList();
-            }
-            else
-            {
-                var cookieFiles = await _context.CookieFiles.Where(x => x.Remote == false).ToListAsync();
-                return cookieFiles.Select(c => c.FileName).ToList();
-            }
+            var cookieFiles = await _context.CookieFiles.Where(x => x.Remote == false).ToListAsync();
+            return cookieFiles.Select(c => c.FileName).ToList();
         }
 
         /// <summary>
-        /// Identifies the primary domain associated with a cookie file.
+        /// Identifies the primary domain associated with a local cookie file.
         /// </summary>
         /// <param name="cookiePath">Path to the cookie JSON file.</param>
         /// <returns>The domain name of the cookie file.</returns>
@@ -61,14 +46,7 @@ namespace Taskly.Infrastructure.Services
         {
             try
             {
-                var settings = await _context.Settings.FirstOrDefaultAsync();
-                string cookieJson = string.Empty;
-
-                if (settings.ProcessDataRemotely)
-                    cookieJson = await _httpClient.GetStringAsync(cookiePath);
-                else
-                    cookieJson = await File.ReadAllTextAsync(cookiePath);
-                
+                string cookieJson = await File.ReadAllTextAsync(cookiePath);
                 var cookies = JsonConvert.DeserializeObject<List<CookieDto>>(cookieJson)!;
                 return cookies.FirstOrDefault()?.Domain?.TrimStart('.') ?? string.Empty;
             }
@@ -81,6 +59,7 @@ namespace Taskly.Infrastructure.Services
 
         /// <summary>
         /// Loads cookies from a file into a Playwright page for automated browsing.
+        /// All operations run on the local machine — no remote requests or proxies are applied.
         /// </summary>
         /// <param name="cookiePath">Path to the cookie JSON file.</param>
         /// <param name="hideBrowser">Whether to run browser in headless mode.</param>
@@ -89,7 +68,6 @@ namespace Taskly.Infrastructure.Services
         {
             try
             {
-                // Initialize Playwright and launch browser
                 var playwright = await Playwright.CreateAsync();
                 var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
                 {
@@ -109,29 +87,15 @@ namespace Taskly.Infrastructure.Services
                     }
                 });
 
-                // Create isolated browser context
+                // Create isolated browser context (no proxy)
                 var context = await browser.NewContextAsync(new BrowserNewContextOptions
                 {
                     IgnoreHTTPSErrors = true
                 });
 
-                List<CookieDto> cookies = new List<CookieDto>();
-                var settings = await _context.Settings.FirstOrDefaultAsync();
-                string cookieJson = string.Empty;
-                
-                // Read cookies and apply to context
-                if (settings.ProcessDataRemotely || 
-                    settings.SendMessagesRemotely)
-                {
-                    cookieJson = await _httpClient.GetStringAsync(cookiePath);
-
-                }
-                else 
-                {
-                    cookieJson = await File.ReadAllTextAsync(cookiePath);
-                }
-
-                cookies = JsonConvert.DeserializeObject<List<CookieDto>>(cookieJson)!;
+                // Read the local cookie file and apply to context
+                string cookieJson = await File.ReadAllTextAsync(cookiePath);
+                var cookies = JsonConvert.DeserializeObject<List<CookieDto>>(cookieJson)!;
 
                 var validCookies = cookies.Select(c => new Cookie
                 {
@@ -182,43 +146,53 @@ namespace Taskly.Infrastructure.Services
         }
 
         /// <summary>
-        /// Uploads a file to the configured API endpoint.
+        /// Launches a Playwright browser page without loading any cookies, without applying any proxy.
+        /// Useful for platforms like Airbnb where browsing does not require an authenticated session
+        /// and a regional proxy is not required since the user provides their own VPN.
         /// </summary>
-        /// <param name="filePath">Path to the file to upload.</param>
-        /// <returns>Response DTO from the upload API.</returns>
-        public async Task<UploadResponseDto> UploadFileRemotelyAsync(string filePath)
+        /// <param name="hideBrowser">Whether to run browser in headless mode.</param>
+        /// <returns>A tuple containing the Playwright page and browser instances.</returns>
+        public async Task<(IPage page, IBrowser browser)> LaunchPageAsync(bool hideBrowser)
         {
             try
             {
-                if (!File.Exists(filePath))
-                    throw new FileNotFoundException($"File not found: {filePath}");
-
-                using var httpClient = new HttpClient();
-                using var form = new MultipartFormDataContent();
-                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-
-                var fileContent = new StreamContent(stream);
-                fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-                form.Add(fileContent, "file", Path.GetFileName(filePath));
-
-                string domain = _context.Settings.FirstOrDefault()?.MasterDomainUrl
-                                ?? throw new Exception("MasterDomainUrl not configured in settings.");
-                string apiUrl = $"{domain}api/fileupload/upload";
-
-                var response = await httpClient.PostAsync(apiUrl, form);
-                response.EnsureSuccessStatusCode();
-
-                string json = await response.Content.ReadAsStringAsync();
-                var uploadResult = System.Text.Json.JsonSerializer.Deserialize<UploadResponseDto>(json, new JsonSerializerOptions
+                // Initialize Playwright and launch browser
+                var playwright = await Playwright.CreateAsync();
+                var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
                 {
-                    PropertyNameCaseInsensitive = true
-                }) ?? throw new Exception("Failed to deserialize upload response");
+                    Channel = "msedge",
+                    Headless = hideBrowser,
+                    Args = new[]
+                    {
+                        "--disable-gpu",
+                        "--disable-dev-shm-usage",
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-accelerated-2d-canvas",
+                        "--disable-background-timer-throttling",
+                        "--disable-renderer-backgrounding",
+                        "--disable-extensions",
+                        "--disable-features=site-per-process,SiteIsolationTrial"
+                    }
+                });
 
-                return uploadResult;
+                // Create isolated browser context (no proxy — user provides their own VPN)
+                var contextOptions = new BrowserNewContextOptions
+                {
+                    IgnoreHTTPSErrors = true
+                };
+
+                var context = await browser.NewContextAsync(contextOptions);
+
+                // Open a new page
+                var page = await context.NewPageAsync();
+
+                return (page, browser);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                throw ex;
+                Console.WriteLine($"❌ CookieService error (LaunchPageAsync): {ex.Message}");
+                throw;
             }
         }
     }

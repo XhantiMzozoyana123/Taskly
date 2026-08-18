@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.14.36127.28
+# Visual Studio Version 18
+VisualStudioVersion = 18.9.12105.275 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Taskly.Domain", "Taskly.Domain\Taskly.Domain.csproj", "{0F743F9A-4EFE-4ADB-B915-DFBFF998AEBF}"
 EndProject
@@ -16,6 +16,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Taskly.Forms", "Taskly.Forms\Taskly.Forms.csproj", "{0E4D970F-1E7D-42F5-8B7C-4734CCF09ECA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Taskly.Api", "Taskly.Api\Taskly.Api.csproj", "{FEE9798B-171C-4ACD-900D-651EECD629FB}"
+EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "Taskly.Python", "Taskly.Python\Taskly.Python.pyproj", "{E80B35B8-6E09-484D-B33E-928AAF53ECF1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -87,6 +89,12 @@ Global
 		{FEE9798B-171C-4ACD-900D-651EECD629FB}.Release|x64.Build.0 = Release|Any CPU
 		{FEE9798B-171C-4ACD-900D-651EECD629FB}.Release|x86.ActiveCfg = Release|Any CPU
 		{FEE9798B-171C-4ACD-900D-651EECD629FB}.Release|x86.Build.0 = Release|Any CPU
+		{E80B35B8-6E09-484D-B33E-928AAF53ECF1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E80B35B8-6E09-484D-B33E-928AAF53ECF1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E80B35B8-6E09-484D-B33E-928AAF53ECF1}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E80B35B8-6E09-484D-B33E-928AAF53ECF1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E80B35B8-6E09-484D-B33E-928AAF53ECF1}.Release|x64.ActiveCfg = Release|Any CPU
+		{E80B35B8-6E09-484D-B33E-928AAF53ECF1}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -97,6 +105,7 @@ Global
 		{693FD38F-F13A-4CF4-B929-D9BC5000FA7D} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{0E4D970F-1E7D-42F5-8B7C-4734CCF09ECA} = {60CB0C7C-686F-4D43-90F6-4FCB90E04AB0}
 		{FEE9798B-171C-4ACD-900D-651EECD629FB} = {60CB0C7C-686F-4D43-90F6-4FCB90E04AB0}
+		{E80B35B8-6E09-484D-B33E-928AAF53ECF1} = {60CB0C7C-686F-4D43-90F6-4FCB90E04AB0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {4AB4A286-C28F-4488-8212-75E07EE7F5CB}

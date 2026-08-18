@@ -3,7 +3,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using Taskly.Application.Interfaces;
 using Taskly.Domain;
 using Taskly.Domain.Entities;
 
@@ -12,13 +11,11 @@ namespace Taskly.Forms.Forms
     public partial class Cookies : Form
     {
         private readonly ApplicationDbContext _context;
-        private readonly ICookieService _cookieService;
 
-        public Cookies(ApplicationDbContext context, ICookieService cookieService)
+        public Cookies(ApplicationDbContext context)
         {
             InitializeComponent();
             _context = context;
-            _cookieService = cookieService;
         }
 
         private void Cookies_Load(object sender, EventArgs e)
@@ -41,10 +38,6 @@ namespace Taskly.Forms.Forms
 
         private async void btnUpload_Click(object sender, EventArgs e)
         {
-            var settings = await _context.Settings.FirstOrDefaultAsync();
-            var domain = settings.MasterDomainUrl;
-            var httpMode = settings.ProcessDataRemotely;
-
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
                 openFileDialog.Title = "Select a Cookies File";
@@ -58,23 +51,14 @@ namespace Taskly.Forms.Forms
                         string filePath = openFileDialog.FileName;
                         string fileContent = File.ReadAllText(filePath);
 
-                        CookieFiles cookieEntity = new CookieFiles();
-
-                        if (httpMode)
+                        // Cookies are stored and used locally only — no remote uploads.
+                        CookieFiles cookieEntity = new CookieFiles
                         {
-                            var remoteFileName = await _cookieService.UploadFileRemotelyAsync(filePath);
+                            FileName = filePath,
+                            Content = fileContent,
+                            Remote = false
+                        };
 
-                            cookieEntity.FileName = domain + remoteFileName.filePath.Replace("\\", "/"); 
-                            cookieEntity.Content = fileContent;
-                            cookieEntity.Remote = true;
-                        }
-                        else
-                        {
-                            cookieEntity.FileName = filePath;
-                            cookieEntity.Content = fileContent;
-                            cookieEntity.Remote = false;
-
-                        }
                         _context.CookieFiles.Add(cookieEntity);
                         _context.SaveChanges();
 

@@ -19,6 +19,7 @@ namespace Taskly.Infrastructure.Services
         private readonly IInstagramService _instagramService;
         private readonly ITwitterService _twitterService;
         private readonly ITikTokService _tikTokService;
+        private readonly IAirbnbService _airbnbService;
         private readonly IAiService _aiService;
         private readonly ICookieService _cookieService;
         private readonly IUiLogger _logger; // Injecting IUiLogger
@@ -31,6 +32,7 @@ namespace Taskly.Infrastructure.Services
             IInstagramService instagramService,
             ITwitterService twitterService,
             ITikTokService tikTokService,
+            IAirbnbService airbnbService,
             IAiService aiService,
             ICookieService cookieService,
             IUiLogger logger) // Add IUiLogger to the constructor
@@ -40,6 +42,7 @@ namespace Taskly.Infrastructure.Services
             _instagramService = instagramService;
             _twitterService = twitterService;
             _tikTokService = tikTokService;
+            _airbnbService = airbnbService;
             _aiService = aiService;
             _cookieService = cookieService;
             _logger = logger; // Initialize the logger
@@ -392,6 +395,9 @@ namespace Taskly.Infrastructure.Services
                             break;
                         case "tiktok":
                             await _tikTokService.DirectMessagingAsync(page, messengerDto);
+                            break;
+                        case "airbnb":
+                            await _airbnbService.DirectMessagingAsync(page, messengerDto);
                             break;
                         default:
                             string errorMessage = $"Unsupported platform '{messengerDto.Lead.Platform}' specified for lead '{messengerDto.Lead.Name}'.";

@@ -37,7 +37,7 @@ namespace Taskly.Domain
             var connectionString = configuration.GetConnectionString("DefaultConnection");
 
             // Choose the appropriate database provider here
-            builder.UseSqlServer(connectionString); // Or UseSqlite, UseNpgsql, etc.
+            builder.UseSqlite(connectionString); // Or UseSqlServer, UseNpgsql, etc.
 
             return builder.Options;
         }
@@ -58,8 +58,6 @@ namespace Taskly.Domain
         public DbSet<CustomMessages> CustomMessages { get; set; }
 
         public DbSet<Templates> Templates { get; set; }
-
-        public DbSet<Domains> Domains { get; set; }
 
         public DbSet<GoogleAI> GoogleAIs { get; set; }
 
