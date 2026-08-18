@@ -3,21 +3,44 @@
 Prefix: /api/video
 
 Endpoints:
-    POST /api/video/generate   (multipart: images + prompt + duration)
+    POST /api/video/generate        (multipart: images + prompt + duration)
+    POST /api/video/generate-json   (JSON body + base64 images)
     GET  /api/video/status/{job_id}
     GET  /api/video/download/{job_id}
 """
+import base64
 from typing import List
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from app.core.config import settings
-from app.models.video_models import VideoGenerateResponse
+from app.models.video_models import (
+    VideoGenerateJsonRequest,
+    VideoGenerateResponse,
+)
 from app.services.video_service import VideoService
 
 video_service = VideoService()
 router = APIRouter(prefix="/api/video", tags=["video"])
+
+
+def _decode_base64_image(value: str, filename: str) -> bytes:
+    """Decode a base64 string into image bytes, tolerating a data-URI prefix."""
+    value = value.strip()
+    if value.startswith("data:"):
+        _, _, value = value.partition(",")
+    try:
+        data = base64.b64decode(value, validate=False)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400, detail=f"Invalid base64 data for image '{filename}': {exc}"
+        )
+    if not data:
+        raise HTTPException(
+            status_code=400, detail=f"Image '{filename}' decoded to empty bytes"
+        )
+    return data
 
 
 @router.post("/generate", response_model=VideoGenerateResponse, status_code=200)
@@ -26,11 +49,7 @@ async def generate_video(
     prompt: str = Form("", description="Optional text describing the video"),
     duration: float = Form(default=5.0, description="Video duration in seconds"),
 ):
-    """Generate a video from the uploaded images.
-
-    Accepts one or more image files (PNG/JPG). Each image becomes a segment
-    of the output MP4, shown for ``duration / len(images)`` seconds.
-    """
+    """Generate a video from the uploaded images (multipart form)."""
     image_payload: List[tuple] = []
     for upload in images:
         data = await upload.read()
@@ -47,6 +66,27 @@ async def generate_video(
     print(
         f"INFO - Video generation requested: prompt={prompt!r}, "
         f"duration={duration}, images={len(image_payload)}"
+    )
+    print(f"INFO - Created job {job.job_id}")
+    return VideoGenerateResponse(success=True, jobId=job.job_id, status=job.status)
+
+
+@router.post(
+    "/generate-json", response_model=VideoGenerateResponse, status_code=200
+)
+def generate_video_json(request: VideoGenerateJsonRequest):
+    """Generate a video from base64 images supplied as a JSON body."""
+    image_payload: List[tuple] = []
+    for img in request.images:
+        data = _decode_base64_image(img.data_base64, img.filename)
+        image_payload.append((img.filename or "image", data))
+
+    job = video_service.create_job(
+        prompt=request.prompt, duration=request.duration, images=image_payload
+    )
+    print(
+        f"INFO - Video generation requested (json): prompt={request.prompt!r}, "
+        f"duration={request.duration}, images={len(image_payload)}"
     )
     print(f"INFO - Created job {job.job_id}")
     return VideoGenerateResponse(success=True, jobId=job.job_id, status=job.status)

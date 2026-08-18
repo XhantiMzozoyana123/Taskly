@@ -1,12 +1,27 @@
 """Pydantic request/response models for the video-generation API."""
-from typing import Optional
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
 class VideoGenerateRequest(BaseModel):
-    """Request body for POST /api/video/generate."""
+    """Legacy request body for POST /api/video/generate (form-data, unused now)."""
     prompt: str = Field(..., description="Text describing the video to generate")
     duration: int = Field(default=5, ge=1, description="Video duration in seconds")
+
+
+class JsonImageInput(BaseModel):
+    """A single image supplied as base64 for the JSON endpoint."""
+    filename: str = Field(default="image.png", description="Original file name")
+    content_type: str = Field(default="image/png", description="MIME type, e.g. image/png")
+    data_base64: str = Field(..., description="Base64-encoded image bytes")
+
+
+class VideoGenerateJsonRequest(BaseModel):
+    """Request body for POST /api/video/generate-json (JSON + base64 images)."""
+    prompt: str = Field(default="", description="Optional text describing the video")
+    duration: float = Field(default=5.0, ge=1, description="Video duration in seconds")
+    images: List[JsonImageInput] = Field(..., min_items=1, description="One or more images")
 
 
 class VideoGenerateResponse(BaseModel):
