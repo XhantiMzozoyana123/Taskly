@@ -15,6 +15,14 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# OpenCV (headless) still needs a couple of system libraries that aren't in
+# the slim PyTorch base image.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libgl1 \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install app dependencies (torch is already in the base image, so pip treats
 # the "torch" line as satisfied and will not re-download it).
 COPY requirements.txt /app/requirements.txt

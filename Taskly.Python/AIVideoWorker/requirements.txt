@@ -3,7 +3,8 @@ uvicorn[standard]
 python-dotenv
 pydantic
 python-multipart
-opencv-python
+# headless build avoids X11/GUI libs (required for running in a container)
+opencv-python-headless
 numpy
 
 # --- AI image-to-video (Stable Video Diffusion) ---
