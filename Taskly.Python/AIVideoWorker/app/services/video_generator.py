@@ -74,9 +74,10 @@ def _get_pipeline():
 
         if settings.AI_DEVICE == "cuda":
             pipe.to("cuda")
-            # Tiling keeps VAE memory low on mid-range GPUs.
-            pipe.enable_vae_tiling()
-            if settings.AI_CPU_OFFLOAD:
+            # Optional optimizations - only apply when the pipeline supports them.
+            if hasattr(pipe, "enable_vae_tiling"):
+                pipe.enable_vae_tiling()
+            if settings.AI_CPU_OFFLOAD and hasattr(pipe, "enable_model_cpu_offload"):
                 pipe.enable_model_cpu_offload()
         else:
             pipe.to("cpu")
