@@ -30,15 +30,50 @@ SVD_MODEL_ID = "stabilityai/stable-video-diffusion-img2vid"
 LTX_MODEL_ID = "Lightricks/LTX-Video"
 
 
+_ai_import_error: str = ""
+
+
 def ai_available() -> bool:
     """True when torch + diffusers + Pillow are importable (i.e. a model can run)."""
+    global _ai_import_error
     try:
         import diffusers  # noqa: F401
         import torch  # noqa: F401
         from PIL import Image  # noqa: F401
         return True
-    except Exception:
+    except Exception as exc:  # pylint: disable=broad-except
+        _ai_import_error = f"{type(exc).__name__}: {exc}"
         return False
+
+
+def deployment_status() -> dict:
+    """Report what the app can run; surfaced by /health for quick troubleshooting.
+
+    Catches import errors so a broken ML install can never take /health down.
+    """
+    status = {
+        "available": ai_available(),
+        "import_error": _ai_import_error or None,
+        "ai_model": settings.AI_MODEL,
+        "tour_style": settings.TOUR_STYLE,
+        "device": settings.AI_DEVICE,
+    }
+    try:
+        import torch
+
+        status["torch_version"] = torch.__version__
+        status["torch_cuda_available"] = bool(torch.cuda.is_available())
+        if torch.cuda.is_available():
+            status["torch_cuda_device"] = torch.cuda.get_device_name(0)
+    except Exception as exc:  # pylint: disable=broad-except
+        status["torch_error"] = f"{type(exc).__name__}: {exc}"
+    try:
+        import diffusers
+
+        status["diffusers_version"] = diffusers.__version__
+    except Exception as exc:  # pylint: disable=broad-except
+        status["diffusers_error"] = f"{type(exc).__name__}: {exc}"
+    return status
 
 
 def model_available(model_id: str) -> bool:

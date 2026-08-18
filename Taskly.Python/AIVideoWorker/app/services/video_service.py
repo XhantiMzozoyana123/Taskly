@@ -197,9 +197,12 @@ class VideoService:
                     exc_info=True,
                 )
 
-        # Otherwise build a Ken Burns property tour from all images.
+        # Otherwise a Ken Burns slideshow is produced. This covers: no GPU / no model,
+        # TOUR_STYLE=slideshow, or an AI-tour failure already logged above.
         logger.info(
-            "Building a Ken Burns property tour from %d image(s) ...", len(job.images)
+            "Using Ken Burns slideshow for %d photo(s) "
+            "(ai_available=%s, tour_style=%s).",
+            len(job.images), video_generator.ai_available(), settings.TOUR_STYLE,
         )
         duration = self._resolve_duration(job)
         return slideshow.generate_slideshow(

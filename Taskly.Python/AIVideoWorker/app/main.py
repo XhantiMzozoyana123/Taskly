@@ -10,4 +10,11 @@ app.include_router(video_router)
 @app.get("/health")
 def health():
     """Health-check endpoint used by Taskly.Form and monitoring tools."""
-    return {"status": "healthy", "service": "AIVideoWorker"}
+    from app.services import video_generator
+
+    info = {"status": "healthy", "service": "AIVideoWorker"}
+    try:
+        info["deployment"] = video_generator.deployment_status()
+    except Exception as exc:  # pylint: disable=broad-except
+        info["deployment_error"] = f"{type(exc).__name__}: {exc}"
+    return info
