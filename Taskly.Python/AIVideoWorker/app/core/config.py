@@ -70,6 +70,26 @@ class Settings:
     #   "slideshow" -> Ken Burns pan/zoom tour (no GPU). Auto-falls back if no GPU.
     TOUR_STYLE: str = os.getenv("TOUR_STYLE", "ai")
 
+    # --- LTX-2 engine (LTX Desktop stack) ---
+    # Use the real LTX-2 'DistilledPipeline' (ltx-core/ltx-pipelines) for local
+    # image-to-video / text-to-video. Requires Python 3.12+, a >=16GB VRAM CUDA
+    # GPU, the gated LTX-2 weights (HF_TOKEN + accepted licenses), and the deps
+    # in requirements-ltx2.txt / Dockerfile.ltx2.
+    LTX2_ENABLED = os.getenv("LTX2_ENABLED", "true").lower() in ("1", "true", "yes")
+    # Absolute dirs on the VPS where the LTX-2 checkpoints were downloaded.
+    LTX2_CHECKPOINT_DIR: str = os.getenv("LTX2_CHECKPOINT_DIR", "/models/ltx2.5/transformer")
+    LTX2_GEMMA_DIR: str = os.getenv("LTX2_GEMMA_DIR", "/models/ltx2.5/gemma4-12b")
+    LTX2_UPSCALER_PATH: str = os.getenv("LTX2_UPSCALER_PATH", "/models/ltx2.5/upscaler")
+    LTX2_VIDEO_VAE_PATH: str = os.getenv("LTX2_VIDEO_VAE_PATH", "/models/ltx2.5/video-vae")
+    LTX2_AUDIO_VAE_PATH: str = os.getenv("LTX2_AUDIO_VAE_PATH", "/models/ltx2.5/audio-vae")
+    LTX2_DURATION_HEAD_PATH: str = os.getenv("LTX2_DURATION_HEAD_PATH", "/models/ltx2.5/duration-head")
+    # Seconds per generated LTX-2 clip, and resolution (1600x900 / 1280x720).
+    LTX2_DURATION_SECONDS: int = int(os.getenv("LTX2_DURATION_SECONDS", "4"))
+    LTX2_WIDTH: int = int(os.getenv("LTX2_WIDTH", "1280"))
+    LTX2_HEIGHT: int = int(os.getenv("LTX2_HEIGHT", "720"))
+    LTX2_FPS: int = int(os.getenv("LTX2_FPS", "25"))
+    LTX2_SEED: int = int(os.getenv("LTX2_SEED", "42"))
+
     # --- Generated-video output (slideshow / property tour) ---
     # Container + codec used for the fallback (multi-image / no-GPU) path.
     # "mp4" -> H.264 (broadly compatible, great for Airbnb/OpenArt sharing).
