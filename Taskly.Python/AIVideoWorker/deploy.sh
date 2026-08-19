@@ -92,7 +92,6 @@ cat > requirements-ltx2.txt <<'EOF'
 diffusers>=0.29
 transformers>=4.44
 accelerate
-xformers
 torch==2.5.1+cu124
 torchvision==0.20.1+cu124
 opencv-python
