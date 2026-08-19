@@ -91,7 +91,7 @@ torch>=2.5.1
 torchvision
 opencv-python
 pillow
-pyav
+av
 fastapi[all]
 uvicorn
 python-multipart
