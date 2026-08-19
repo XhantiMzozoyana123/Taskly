@@ -71,7 +71,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt requirements-ltx2.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-ltx2.txt
+# Install CUDA-matching torch/torchvision first (driver on this box is CUDA 12.4),
+# then the rest.  Pinning to cu124 avoids pip silently upgrading to a newer CUDA
+# build that the installed driver cannot expose to torch.
+RUN pip install --no-cache-dir torch==2.5.1+cu124 torchvision==0.20.1+cu124 \
+    --index-url https://download.pytorch.org/whl/cu124 && \
+    pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cu124 \
+    -r requirements.txt -r requirements-ltx2.txt
 
 COPY app/ ./app/
 COPY run.py ./
@@ -87,8 +93,8 @@ diffusers>=0.29
 transformers>=4.44
 accelerate
 xformers
-torch>=2.5.1
-torchvision
+torch==2.5.1+cu124
+torchvision==0.20.1+cu124
 opencv-python
 pillow
 av
