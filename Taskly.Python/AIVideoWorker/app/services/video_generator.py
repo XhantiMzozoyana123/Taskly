@@ -183,8 +183,8 @@ def _load_wan():
     The 1.3B variant runs in fp16 within ~11 GB, fitting the RTX A4000 (16 GB);
     the 4.5B variant needs ~24 GB and is intentionally not used here.
 
-    Requires diffusers >= 0.30 and the gated ``Wan-AI/Wan2.1-T2V-1.3B`` weights
-    (accept the license on Hugging Face and set ``AI_LTX_MODEL_ID`` to it).
+    Requires diffusers >= 0.30 and the gated ``Wan-AI/Wan2.1-T2V-1.3B-Diffusers``
+    weights (accept the license on Hugging Face and set ``AI_LTX_MODEL_ID`` to it).
     """
     import torch
     from diffusers import DiffusionPipeline
@@ -576,7 +576,7 @@ def generate_text_to_video(
     # Wan2.1 (diffusers Wan2.1 pipeline via DiffusionPipeline) -- closest LOCAL
     # model to Google Veo on a 16 GB GPU (Wan2.1-1.3B, native 720p, strong motion
     # coherence).  Enable with
-    #   AI_MODEL=wan  +  AI_LTX_MODEL_ID=Wan-AI/Wan2.1-T2V-1.3B
+    #   AI_MODEL=wan  +  AI_LTX_MODEL_ID=Wan-AI/Wan2.1-T2V-1.3B-Diffusers
     # (gated weights + diffusers >= 0.30).  Any failure is logged and the job is
     # marked FAILED (no silent LTX fallback) so Wan output stays attributable.
     if settings.AI_MODEL == "wan":
