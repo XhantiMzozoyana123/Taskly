@@ -148,6 +148,8 @@ and the model/tour settings. Keep port 8000 open in the VPS firewall.
 | `No module named 'av'` / PyAV import error | `PyAV` needs its bundled FFmpeg libs present | `sudo apt-get install -y ffmpeg` then re-run `pip install -r requirements.txt` |
 | `cv2.imdecode` returns `None` / OpenCV can't decode | headless OpenCV missing `libgl1`/`libglib2.0-0` | `sudo apt-get install -y libgl1 libglib2.0-0` |
 | model download fails | Gated repo needs auth | set `HF_TOKEN` in `.env` and accept the model license on HF |
+| `Error parsing line b'\x0e' in …/spiece.model` | LTX `T5Tokenizer` needs `sentencepiece` + `protobuf`; without them transformers falls back to the tiktoken parser, which can't read the binary SentencePiece proto | `pip install sentencepiece protobuf` (now in `requirements.txt`) |
+| `CUDA out of memory … 760 MiB reserved but unallocated` | On 16 GB GPUs (RTX A4000) the caching allocator fragments the card just as the model touches ~14.3 GiB | set `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` (already in the systemd unit) and/or enable `AI_CPU_OFFLOAD=true` |
 | ports not reachable | container had firewall-less networking; bare install doesn't | open port 8000, and set `HOST=0.0.0.0` |
 | slow / CPU only | no GPU present | use `AI_DEVICE=cpu` + `TOUR_STYLE=slideshow` and expect slow inference |
 
