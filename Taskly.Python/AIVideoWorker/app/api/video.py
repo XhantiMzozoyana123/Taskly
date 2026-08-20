@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse
 
 from app.core.config import settings
 from app.models.video_models import (
+    TextVideoGenerateRequest,
     VideoGenerateJsonRequest,
     VideoGenerateResponse,
 )
@@ -26,12 +27,33 @@ router = APIRouter(prefix="/api/video", tags=["video"])
 
 
 def _decode_base64_image(value: str, filename: str) -> bytes:
-    """Decode a base64 string into image bytes, tolerating a data-URI prefix."""
+    """Decode a base64 string into raw image bytes.
+
+    Tolerates a leading ``data:image/...;base64,`` data-URI prefix, URL-safe
+    base64 (``-``/``_`` instead of ``+``//``) and missing ``=`` padding.  The
+    result is validated by actually decoding it, so a non-image payload is
+    rejected here with a clear 400 instead of being silently accepted and later
+    dying inside the AI tour (which used to surface only as a Ken Burns
+    fallback with a swallowed traceback).
+    """
     value = value.strip()
     if value.startswith("data:"):
         _, _, value = value.partition(",")
+
+    # Drop any embedded whitespace / newlines (some clients wrap long b64).
+    value = "".join(value.split())
+    # URL-safe base64 uses '-'/'_' where the standard alphabet uses '+'/'/'.
+    # If left untouched, base64.b64decode(validate=True) raises and the lenient
+    # (validate=False) form silently drops those chars and shifts byte
+    # alignment -- producing bytes Pillow cannot identify even though OpenCV
+    # can still recover an image.  Normalise to the standard alphabet so the
+    # decoded payload is byte-identical to the original image.
+    value = value.replace("-", "+").replace("_", "/")
+    # Restore any missing '=' padding (b64decode mandates len % 4 == 0).
+    value += "=" * (-len(value) % 4)
+
     try:
-        data = base64.b64decode(value, validate=False)
+        data = base64.b64decode(value, validate=True)
     except Exception as exc:
         raise HTTPException(
             status_code=400, detail=f"Invalid base64 data for image '{filename}': {exc}"
@@ -39,6 +61,20 @@ def _decode_base64_image(value: str, filename: str) -> bytes:
     if not data:
         raise HTTPException(
             status_code=400, detail=f"Image '{filename}' decoded to empty bytes"
+        )
+
+    # Fail fast: make sure the payload really is an image we can decode.
+    try:
+        from app.services.video_generator import _pil_from_bytes
+
+        _pil_from_bytes(data)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"image '{filename}' is not a valid image "
+                "(could not be decoded by Pillow or OpenCV)"
+            ),
         )
     return data
 
@@ -122,6 +158,50 @@ def generate_video_json(request: VideoGenerateJsonRequest):
     print(
         f"INFO - Video generation requested (json): prompt={request.prompt!r}, "
         f"duration={request.duration}, images={len(image_payload)}"
+    )
+    print(f"INFO - Created job {job.job_id}")
+    return VideoGenerateResponse(success=True, jobId=job.job_id, status=job.status)
+
+
+@router.post(
+    "/generate-text-video", response_model=VideoGenerateResponse, status_code=200
+)
+def generate_text_video(request: TextVideoGenerateRequest):
+    """Generate a video purely from a text prompt using LTX-2 (text-to-video).
+
+    Poll ``GET /status/{job_id}`` and download the result with
+    ``GET /download/{job_id}`` once ``status`` is ``"completed"``.
+    """
+    from app.services import ltx2_engine
+
+    if not getattr(settings, "LTX2_ENABLED", False):
+        raise HTTPException(
+            status_code=503,
+            detail="LTX-2 text-to-video is disabled (set LTX2_ENABLED=true)",
+        )
+    try:
+        if not ltx2_engine.ltx2_available():
+            raise HTTPException(
+                status_code=503,
+                detail="LTX-2 engine unavailable (no CUDA GPU or missing weights)",
+            )
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=503, detail=f"LTX-2 engine not installed: {exc}"
+        )
+
+    job = video_service.create_job(
+        prompt=request.prompt,
+        duration=request.duration,
+        kind="text_video",
+        width=request.width,
+        height=request.height,
+        fps=request.fps,
+        seed=request.seed,
+    )
+    print(
+        f"INFO - Text-to-video requested: prompt={request.prompt!r}, "
+        f"duration={request.duration}, res={request.width or 1280}x{request.height or 720}"
     )
     print(f"INFO - Created job {job.job_id}")
     return VideoGenerateResponse(success=True, jobId=job.job_id, status=job.status)

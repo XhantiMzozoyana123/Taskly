@@ -1,4 +1,4 @@
-﻿"""AI image-to-video generation using HuggingFace models.
+"""AI image-to-video generation using HuggingFace models.
 
 Supports animating a single image with a diffusion model.  The active model is
 selected by ``settings.AI_MODEL``: by default **Lightricks LTX-Video** (fast,
@@ -237,6 +237,39 @@ def _generate_with_svd(image):
     return frames, image.width, image.height
 
 
+def _pil_from_bytes(data: bytes) -> "Image.Image":
+    """Decode raw image bytes into an ``RGB`` PIL image.
+
+    Pillow's ``Image.open`` is strict about the file header, whereas OpenCV's
+    decoder re-syncs on image markers and is far more tolerant of slightly
+    corrupt bytes (for example the artefacts produced when URL-safe base64
+    is decoded with the standard alphabet, which is exactly what used to make
+    the AI tour raise ``UnidentifiedImageError`` while the Ken Burns fallback --
+    which decodes via OpenCV first -- silently succeeded).
+
+    We therefore try Pillow first and fall back to OpenCV, mirroring
+    ``slideshow._bgr_from_any`` so the AI tour accepts every image the
+    Ken Burns fallback accepts (and vice-versa).
+    """
+    from PIL import Image
+
+    try:
+        return Image.open(io.BytesIO(data)).convert("RGB")
+    except Exception:
+        import cv2
+        import numpy as np
+
+        arr = np.frombuffer(data, dtype=np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError(
+                "cannot decode image bytes: neither Pillow nor OpenCV "
+                "recognised the image format"
+            )
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        return Image.fromarray(img)
+
+
 def _generate_with_ltx(image, prompt: str, num_frames: int = None):
     """Run LTX-Video on ``image`` (+ optional ``prompt``); return ``(frames, w, h)``.
 
@@ -290,10 +323,8 @@ def generate_image_to_video(
     is logged.  Returns the path to the written video file (container/codec
     chosen from the ``output_path`` extension).  Raises on failure.
     """
-    from PIL import Image
-
     model = (model or settings.AI_MODEL).lower()
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    image = _pil_from_bytes(image_bytes)
 
     if fps is None:
         fps = settings.AI_LTX_FPS if model == "ltx" else settings.AI_FPS
@@ -317,6 +348,51 @@ def generate_image_to_video(
     return write_frames_video(
         frames, output_path, fps=fps, width=width, height=height
     )
+
+
+def generate_text_to_video(
+    prompt: str,
+    output_path: Path,
+    *,
+    duration_seconds: int = 4,
+    width: int = 1280,
+    height: int = 720,
+    fps: int = 25,
+    seed: int = 0,
+) -> Path:
+    """Generate a video from a text prompt using LTX-2 (text-to-video).
+
+    Uses the LTX-2 DistilledPipeline when available (LTX_VERSION=2); otherwise
+    falls back to a placeholder implementation that generates a single frame.
+
+    Returns the path to the generated MP4 file.
+    """
+    from app.services import ltx2_engine
+
+    # Check if LTX-2 is enabled in settings
+    if not getattr(settings, "LTX2_ENABLED", False):
+        raise RuntimeError("LTX-2 text-to-video is disabled (set LTX2_ENABLED=true)")
+
+    # Lazily instantiate LTX-2 engine (imports are heavy)
+    try:
+        engine = ltx2_engine.LTX2Engine.from_settings()
+        num_frames = ltx2_engine.compute_num_frames(duration_seconds, fps)
+        return Path(
+            engine.generate_text_to_video(
+                prompt=prompt,
+                output_path=str(output_path),
+                width=width,
+                height=height,
+                duration_seconds=duration_seconds,
+                num_frames=num_frames,
+                frame_rate=fps,
+                seed=seed,
+            )
+        )
+    except ImportError as exc:
+        raise RuntimeError(f"LTX-2 engine not available: {exc}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"LTX-2 text-to-video generation failed: {exc}") from exc
 
 
 def _stitch_clips(clips, canvas_w, canvas_h, transition_duration, fps):
@@ -373,8 +449,6 @@ def generate_image_sequence_video(
     so every room comes alive with AI-generated camera motion.  Clips are
     normalised to the configured canvas and stitched together.
     """
-    from PIL import Image
-
     if not images:
         raise ValueError("At least one image is required")
 
@@ -386,7 +460,7 @@ def generate_image_sequence_video(
 
     clips = []
     for name, data in images:
-        image = Image.open(io.BytesIO(data)).convert("RGB")
+        image = _pil_from_bytes(data)
         logger.info("AI tour: animating photo '%s' ...", name)
         frames, _, _ = _generate_with_ltx(image, prompt=prompt, num_frames=num_frames)
         clips.append(frames)

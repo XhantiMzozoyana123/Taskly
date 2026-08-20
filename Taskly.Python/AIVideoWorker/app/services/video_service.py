@@ -1,4 +1,4 @@
-﻿"""Video-generation service.
+"""Video-generation service.
 
 This layer abstracts all video-creation logic from the FastAPI router.  A video
 is created either by animating a single image with the configured AI model
@@ -53,14 +53,25 @@ class Job:
         images: Optional[List[Tuple[str, bytes]]] = None,
         image_duration: Optional[float] = None,
         transition_duration: Optional[float] = None,
+        kind: str = "images",
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        fps: Optional[int] = None,
+        seed: Optional[int] = None,
     ):
         self.job_id: str = str(uuid.uuid4())
         self.prompt: str = prompt
         self.duration: float = duration
+        self.kind: str = kind
         self.images: List[Tuple[str, bytes]] = images or []
         # Optional overrides for the property-tour slideshow.
         self.image_duration: Optional[float] = image_duration
         self.transition_duration: Optional[float] = transition_duration
+        # Text-to-video generation parameters (used when kind == "text_video").
+        self.width: int = width or settings.LTX2_WIDTH
+        self.height: int = height or settings.LTX2_HEIGHT
+        self.fps: int = fps or settings.LTX2_FPS
+        self.seed: int = seed if seed is not None else settings.LTX2_SEED
         self.status: str = JobStatus.QUEUED.value
         self.progress: int = 0
         self.video_filename: str = None
@@ -97,6 +108,11 @@ class VideoService:
         images: Optional[List[Tuple[str, bytes]]] = None,
         image_duration: Optional[float] = None,
         transition_duration: Optional[float] = None,
+        kind: str = "images",
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        fps: Optional[int] = None,
+        seed: Optional[int] = None,
     ) -> Job:
         """Create a new job and start background processing."""
         job = Job(
@@ -105,6 +121,11 @@ class VideoService:
             images=images,
             image_duration=image_duration,
             transition_duration=transition_duration,
+            kind=kind,
+            width=width,
+            height=height,
+            fps=fps,
+            seed=seed,
         )
         self.jobs[job.job_id] = job
         thread = Thread(target=self._process_job, args=(job.job_id,), daemon=True)
@@ -125,7 +146,10 @@ class VideoService:
             job.status = JobStatus.PROCESSING.value
             job.progress = 25
 
-            video_path = self._generate_video_from_images(job)
+            if job.kind == "text_video":
+                video_path = self._generate_video_from_text(job)
+            else:
+                video_path = self._generate_video_from_images(job)
             job.progress = 75
             job.video_filename = video_path.name
             job.progress = 100
@@ -150,6 +174,27 @@ class VideoService:
             trans = job.transition_duration or settings.SLIDESHOW_TRANSITION_DURATION
             return job.image_duration * n + trans * (n - 1)
         return job.duration
+
+    def _generate_video_from_text(self, job: Job) -> Path:
+        """Generate a video purely from a text prompt using LTX-2 (text-to-video)."""
+        if not job.prompt or not job.prompt.strip():
+            raise ValueError("No text prompt provided")
+        video_dir = settings.generated_video_path
+        video_dir.mkdir(parents=True, exist_ok=True)
+        video_path = video_dir / f"{job.job_id}.{settings.VIDEO_FORMAT}"
+        logger.info(
+            "Generating LTX-2 text-to-video: prompt=%r duration=%ss %dx%d@%dfps",
+            job.prompt, job.duration, job.width, job.height, job.fps,
+        )
+        return video_generator.generate_text_to_video(
+            prompt=job.prompt,
+            output_path=video_path,
+            duration_seconds=int(job.duration),
+            width=job.width,
+            height=job.height,
+            fps=job.fps,
+            seed=job.seed,
+        )
 
     def _generate_video_from_images(self, job: Job) -> Path:
         """Generate the output video from the job's images.

@@ -31,6 +31,17 @@ class VideoGenerateJsonRequest(BaseModel):
     )
 
 
+class TextVideoGenerateRequest(BaseModel):
+    """Request body for POST /api/video/generate-text-video (text-to-video)."""
+
+    prompt: str = Field(..., description="Text describing the video to generate")
+    duration: float = Field(default=4.0, ge=1, description="Video duration in seconds")
+    width: Optional[int] = Field(default=1280, ge=64, description="Video width in pixels")
+    height: Optional[int] = Field(default=720, ge=64, description="Video height in pixels")
+    fps: Optional[int] = Field(default=25, ge=1, le=60, description="Frames per second")
+    seed: Optional[int] = Field(default=42, description="Random seed (0 = random)")
+
+
 class VideoGenerateResponse(BaseModel):
     """Response returned immediately after queuing a video-generation job."""
     success: bool
