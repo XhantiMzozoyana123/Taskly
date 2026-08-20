@@ -566,18 +566,21 @@ def generate_text_to_video(
     # Wan2.1 (diffusers WanT2VPipeline) -- closest LOCAL model to Google Veo on a
     # 16 GB GPU (Wan2.1-1.3B, native 720p, strong motion coherence).  Enable with
     #   AI_MODEL=wan  +  AI_LTX_MODEL_ID=Wan-AI/Wan2.1-T2V-1.3B
-    # (gated weights + diffusers >= 0.30).  Any failure -> graceful fallback to
-    # LTX, so the worker always emits a video.
+    # (gated weights + diffusers >= 0.30).  Any failure is logged and the job is
+    # marked FAILED (no silent LTX fallback) so Wan output stays attributable.
     if settings.AI_MODEL == "wan":
         try:
             logger.info("Using Wan2.1 T2V for text-to-video ...")
             frames, w, h = _generate_text_with_wan(prompt, num_frames, width, height)
             return write_frames_video(frames, output_path, fps=fps, width=w, height=h)
         except Exception:
-            logger.warning(
-                "Wan2.1 text-to-video unavailable; falling back to LTX-Video.",
-                exc_info=True,
-            )
+            # A selected "wan" job must be attributable to Wan2.1: NEVER silently
+            # fall back to LTX. Masking a Wan failure as an LTX clip makes it
+            # impossible to tell which model produced a bad result. Re-raise so the
+            # worker marks the job FAILED with the Wan traceback in job.error
+            # (visible via GET /api/video/status/{job_id}).
+            logger.error("Wan2.1 generation failed; marking job as failed.", exc_info=True)
+            raise
 
     # diffusers path (no ltx-core/ltx-pipelines required).
     if not ai_available():
