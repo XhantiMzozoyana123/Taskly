@@ -19,5 +19,12 @@ accelerate
 transformers
 # tiktoken required by the LTX text encoder
 tiktoken
+# sentencepiece is required by the T5 tokenizer (spiece.model) used by LTX-Video.
+# WITHOUT it, transformers falls back to the tiktoken BPE parser, which cannot
+# read the binary SentencePiece protobuf -> ValueError "Error parsing line b'\\x0e'".
+sentencepiece
+# transformers' SentencePieceExtractor also parses spiece.model with the protobuf
+# Python library; install it so the SentencePiece path succeeds (no tiktoken fallback).
+protobuf
 safetensors
 Pillow
