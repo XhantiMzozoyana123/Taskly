@@ -62,9 +62,20 @@ class Settings:
     AI_LTX_PROMPT: str = os.getenv(
         "AI_LTX_PROMPT",
         "real estate property tour, smooth camera motion, bright natural lighting",
-    )
+        )
     # Per-photo clip length for the AI tour in frames. 0 -> use LTX default.
     AI_LTX_NUM_FRAMES: int = int(os.getenv("AI_LTX_NUM_FRAMES", "0"))
+    # Classifier-free guidance scale passed to the LTX-Video diffusion pipeline.
+    # The diffusers default is only ~5.0 (soft/uncanny); 7.0-8.0 yields noticeably
+    # sharper frames. Tune via env to avoid changing code.
+    AI_LTX_GUIDANCE_SCALE: float = float(os.getenv("AI_LTX_GUIDANCE_SCALE", "7.0"))
+    # Negative prompt fed to LTX to suppress its typical artefacts (softness,
+    # blur, noise, deformed geometry, watermarks) when a positive prompt is given.
+    AI_LTX_NEGATIVE_PROMPT: str = os.getenv(
+        "AI_LTX_NEGATIVE_PROMPT",
+        "low quality, blurry, out of focus, jpeg artifacts, noisy, "
+        "deformed, distorted, watermark, text, signature",
+    )
     # How multiple uploaded photos become a video:
     #   "ai"        -> animate each photo with LTX image-to-video, then crossfade
     #   "slideshow" -> Ken Burns pan/zoom tour (no GPU). Auto-falls back if no GPU.

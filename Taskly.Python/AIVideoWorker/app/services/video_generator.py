@@ -244,9 +244,10 @@ def _generate_text_with_ltx(prompt: str, num_frames: int = None, width: int = 12
     (``_get_pipeline("ltx")``), but omits the ``image`` conditioning so LTX
     generates motion from the prompt alone.  Returns ``(frames, width, height)``
     at LTX's native VAE-divisible resolution.
-    """
+        """
     pipe = _get_pipeline("ltx")
     text = prompt or settings.AI_LTX_PROMPT or "cinematic camera motion"
+    pipe.guidance_scale = settings.AI_LTX_GUIDANCE_SCALE
     kwargs = dict(
         prompt=text,
         # LTX needs a resolution even for text-to-video.
@@ -254,6 +255,7 @@ def _generate_text_with_ltx(prompt: str, num_frames: int = None, width: int = 12
         height=_resize_to_divisible_height(height, divisor=32),
         num_inference_steps=settings.AI_LTX_NUM_INFERENCE_STEPS,
         generator=settings.generator(),
+        negative_prompt=settings.AI_LTX_NEGATIVE_PROMPT,
     )
     if num_frames:
         kwargs["num_frames"] = num_frames
@@ -314,15 +316,17 @@ def _generate_with_ltx(image, prompt: str, num_frames: int = None):
     empty ``settings.AI_LTX_PROMPT`` is used.  ``num_frames`` is optional; when 0
     or None LTX uses its own default frame count.  Output frames are returned at
     LTX's native (VAE-divisible) resolution.
-    """
+        """
     pipe = _get_pipeline("ltx")
     image = _resize_to_divisible(image, max_edge=1216, divisor=32)
     text = prompt or settings.AI_LTX_PROMPT
+    pipe.guidance_scale = settings.AI_LTX_GUIDANCE_SCALE
     kwargs = dict(
         image=image,
         prompt=text,
         num_inference_steps=settings.AI_LTX_NUM_INFERENCE_STEPS,
         generator=settings.generator(),
+        negative_prompt=settings.AI_LTX_NEGATIVE_PROMPT,
     )
     if num_frames:
         kwargs["num_frames"] = num_frames
