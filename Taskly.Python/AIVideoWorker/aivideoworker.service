@@ -22,6 +22,11 @@ User=administrator
 Group=administrator
 WorkingDirectory=/home/administrator/Taskly/Taskly.Python/AIVideoWorker
 Environment=PATH=/home/administrator/Taskly/Taskly.Python/AIVideoWorker/.venv/bin
+# On 16 GB GPUs (e.g. RTX A4000) the LTX-Video model + VAE sit at ~14.3 GiB and the
+# default torch caching allocator fragments the remaining ~1.3 GiB, causing OOM on the
+# first ~350 MiB allocation. expandable_segments makes allocations bypass the arena so
+# the fragmented "reserved but unallocated" memory becomes usable. Keep this on.
+Environment=PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # Export the .env values as the process environment so os.getenv() in
 # app/core/config.py picks them up even if load_dotenv() does not.
 EnvironmentFile=/home/administrator/Taskly/Taskly.Python/AIVideoWorker/.env
