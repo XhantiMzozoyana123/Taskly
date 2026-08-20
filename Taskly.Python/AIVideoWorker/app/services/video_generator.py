@@ -237,6 +237,43 @@ def _generate_with_svd(image):
     return frames, image.width, image.height
 
 
+def _generate_text_with_ltx(prompt: str, num_frames: int = None, width: int = 1280, height: int = 720):
+    """Run the diffusers Lightricks/LTX-Video pipeline for pure TEXT-to-video.
+
+    Uses the same already-loaded diffusers LTX pipeline as the image tour
+    (``_get_pipeline("ltx")``), but omits the ``image`` conditioning so LTX
+    generates motion from the prompt alone.  Returns ``(frames, width, height)``
+    at LTX's native VAE-divisible resolution.
+    """
+    pipe = _get_pipeline("ltx")
+    text = prompt or settings.AI_LTX_PROMPT or "cinematic camera motion"
+    kwargs = dict(
+        prompt=text,
+        # LTX needs a resolution even for text-to-video.
+        width=_resize_to_divisible_width(width, divisor=32),
+        height=_resize_to_divisible_height(height, divisor=32),
+        num_inference_steps=settings.AI_LTX_NUM_INFERENCE_STEPS,
+        generator=settings.generator(),
+    )
+    if num_frames:
+        kwargs["num_frames"] = num_frames
+    logger.info(
+        "LTX t2v: generating from prompt=%r steps=%s frames=%s ...",
+        text, settings.AI_LTX_NUM_INFERENCE_STEPS, num_frames or "default",
+    )
+    result = pipe(**kwargs)
+    frames = result.frames[0]
+    return frames, kwargs["width"], kwargs["height"]
+
+
+def _resize_to_divisible_width(w: int, divisor: int = 32) -> int:
+    return max(divisor, int(w) // divisor * divisor)
+
+
+def _resize_to_divisible_height(h: int, divisor: int = 32) -> int:
+    return max(divisor, int(h) // divisor * divisor)
+
+
 def _pil_from_bytes(data: bytes) -> "Image.Image":
     """Decode raw image bytes into an ``RGB`` PIL image.
 
@@ -350,6 +387,10 @@ def generate_image_to_video(
     )
 
 
+def compute_t2v_frames(duration_seconds: int, fps: int) -> int:
+    """Reasonable frame count on the diffusion-friendly 8-1 grid."""
+    n = int(duration_seconds) * max(fps, 1)
+    return max(9, (n // 8) * 8 + 1)
 def generate_text_to_video(
     prompt: str,
     output_path: Path,
@@ -360,41 +401,53 @@ def generate_text_to_video(
     fps: int = 25,
     seed: int = 0,
 ) -> Path:
-    """Generate a video from a text prompt using LTX-2 (text-to-video).
+    """Generate a video from a TEXT prompt.
 
-    Uses the LTX-2 DistilledPipeline when available (LTX_VERSION=2); otherwise
-    falls back to a placeholder implementation that generates a single frame.
+    Prefers the real LTX-2 engine (``ltx_pipelines``/``ltx-core``) when installed
+    and a CUDA GPU is present.  Otherwise falls back to the **diffusers**
+    ``Lightricks/LTX-Video`` text-to-video pipeline, which needs only torch +
+    diffusers (already deployed on the GPU container) -- so text-to-video works
+    even on images/containers that never installed the LTX-2 python stack.
 
     Returns the path to the generated MP4 file.
     """
-    from app.services import ltx2_engine
+    num_frames = compute_t2v_frames(duration_seconds, int(fps))
 
-    # Check if LTX-2 is enabled in settings
-    if not getattr(settings, "LTX2_ENABLED", False):
-        raise RuntimeError("LTX-2 text-to-video is disabled (set LTX2_ENABLED=true)")
-
-    # Lazily instantiate LTX-2 engine (imports are heavy)
+    # Prefer the real LTX-2 engine when its packages + GPU are available.
     try:
-        engine = ltx2_engine.LTX2Engine.from_settings()
-        num_frames = ltx2_engine.compute_num_frames(duration_seconds, fps)
-        return Path(
-            engine.generate_text_to_video(
+        from app.services import ltx2_engine
+
+        if ltx2_engine.ltx2_available():
+            logger.info("Using LTX-2 DistilledPipeline for text-to-video ...")
+            engine = ltx2_engine.LTX2Engine.from_settings()
+            nf = ltx2_engine.compute_num_frames(duration_seconds, int(fps))
+            out = engine.generate_text_to_video(
                 prompt=prompt,
                 output_path=str(output_path),
                 width=width,
                 height=height,
                 duration_seconds=duration_seconds,
-                num_frames=num_frames,
+                num_frames=nf,
                 frame_rate=fps,
                 seed=seed,
             )
+            return Path(out)
+    except ImportError:
+        pass  # ltx2 stack not installed -> fall through to diffusers
+    except Exception:
+        logger.warning(
+            "LTX-2 text-to-video unavailable; falling back to diffusers LTX.",
+            exc_info=True,
         )
-    except ImportError as exc:
-        raise RuntimeError(f"LTX-2 engine not available: {exc}") from exc
-    except Exception as exc:
-        raise RuntimeError(f"LTX-2 text-to-video generation failed: {exc}") from exc
 
-
+    # diffusers path (no ltx-core/ltx-pipelines required).
+    if not ai_available():
+        raise RuntimeError(
+            "No text-to-video backend available: neither LTX-2 (ltx_pipelines) "
+            "nor diffusers+torch are installed."
+        )
+    frames, w, h = _generate_text_with_ltx(prompt, num_frames, width, height)
+    return write_frames_video(frames, output_path, fps=fps, width=w, height=h)
 def _stitch_clips(clips, canvas_w, canvas_h, transition_duration, fps):
     """Crossfade a list of clips (each a list of PIL frames) into one sequence.
 
