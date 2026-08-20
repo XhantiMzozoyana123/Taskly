@@ -167,27 +167,35 @@ def generate_video_json(request: VideoGenerateJsonRequest):
     "/generate-text-video", response_model=VideoGenerateResponse, status_code=200
 )
 def generate_text_video(request: TextVideoGenerateRequest):
-    """Generate a video purely from a text prompt using LTX-2 (text-to-video).
+    """Generate a video from a text prompt.
 
-    Poll ``GET /status/{job_id}`` and download the result with
-    ``GET /download/{job_id}`` once ``status`` is ``"completed"``.
+    The job is queued and its backend is selected by the background worker:
+    it uses the real LTX-2 DistilledPipeline when ``ltx_pipelines`` is
+    installed and a CUDA GPU is present, otherwise falls back to the diffusers
+    ``Lightricks/LTX-Video`` text-to-video pipeline (torch + diffusers, already
+    deployed).  Poll ``GET /api/video/status/{job_id}`` and download with
+    ``GET /api/video/download/{job_id}`` once ``status`` is ``"completed"``.
     """
-    from app.services import ltx2_engine
+    # Fail fast only when no usable backend exists at all; otherwise let the
+    # background worker choose LTX-2 vs the diffusers fallback.
+    from app.services import video_generator
 
-    if not getattr(settings, "LTX2_ENABLED", False):
+    ltx2_ok = False
+    try:
+        from app.services import ltx2_engine
+
+        ltx2_ok = bool(getattr(settings, "LTX2_ENABLED", False)) and ltx2_engine.ltx2_available()
+    except ImportError:
+        ltx2_ok = False
+
+    if not ltx2_ok and not video_generator.ai_available():
         raise HTTPException(
             status_code=503,
-            detail="LTX-2 text-to-video is disabled (set LTX2_ENABLED=true)",
-        )
-    try:
-        if not ltx2_engine.ltx2_available():
-            raise HTTPException(
-                status_code=503,
-                detail="LTX-2 engine unavailable (no CUDA GPU or missing weights)",
-            )
-    except ImportError as exc:
-        raise HTTPException(
-            status_code=503, detail=f"LTX-2 engine not installed: {exc}"
+            detail=(
+                "No text-to-video backend available: LTX-2 engine requires "
+                "ltx_pipelines/ltx-core + CUDA GPU, and the diffusers fallback "
+                "(torch/diffusers) is not installed."
+            ),
         )
 
     job = video_service.create_job(
