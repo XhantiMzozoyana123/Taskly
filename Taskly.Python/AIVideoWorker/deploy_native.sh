@@ -95,6 +95,10 @@ GENERATED_VIDEO_DIRECTORY=generated
 AI_DEVICE=cuda
 AI_MODEL_ID=stabilityai/stable-video-diffusion-img2vid
 AI_USE_FP16=true
+# RTX A4000 / 16 GB GPUs: 1280x720 LTX clips (~14.7 GiB working set) exceed the
+# card's 15.63 GiB. Set this to true to stream the model to CPU between steps so
+# 720p fits (it's ~2-3x slower). Leave false on 24+ GB cards for max speed.
+AI_CPU_OFFLOAD=false
 AI_NUM_FRAMES=14
 AI_FPS=7
 AI_DECODE_CHUNK_SIZE=8
