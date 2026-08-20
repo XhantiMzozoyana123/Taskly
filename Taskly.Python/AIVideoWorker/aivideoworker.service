@@ -1,14 +1,17 @@
 # /etc/systemd/system/aivideoworker.service  (copy to /etc/systemd/system/ on the VPS)
 #
-# Runs AIVideoWorker bare-metal (no Docker) and keeps it alive across shell
-# exits and reboots - the native equivalent of docker-compose's
+# Runs AIVideoWorker bare-metal (no Docker) and restarts itself on crash /
+# reboot - the native equivalent of docker-compose's
 #   restart: unless-stopped  +  container_name: aivideoworker
+#
+# NOTE: systemd has no literal "unless-stopped"; `on-failure` is the closest:
+# the service auto-restarts on non-zero exit / crash, but a clean
+# `systemctl stop` (like docker stop) is NOT treated as a failure.
 #
 # Create with:
 #   sudo cp <repo>/aivideoworker.service /etc/systemd/system/aivideoworker.service
 #   sudo systemctl daemon-reload
-#   sudo systemctl enable --now aivideoworker
-#   sudo systemctl status aivideoworker
+#   sudo systemctl restart aivideoworker   # apply this fixed Restart= value
 [Unit]
 Description=AIVideoWorker (FastAPI image-to-video service, native no-Docker)
 After=network.target
@@ -23,7 +26,7 @@ Environment=PATH=/home/administrator/Taskly/Taskly.Python/AIVideoWorker/.venv/bi
 # app/core/config.py picks them up even if load_dotenv() does not.
 EnvironmentFile=/home/administrator/Taskly/Taskly.Python/AIVideoWorker/.env
 ExecStart=/home/administrator/Taskly/Taskly.Python/AIVideoWorker/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-Restart=unless-stopped
+Restart=on-failure
 RestartSec=5
 # Logs go to journald:  journalctl -u aivideoworker -f
 StandardOutput=journal
