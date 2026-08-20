@@ -237,6 +237,35 @@ def _generate_with_svd(image):
     return frames, image.width, image.height
 
 
+def _set_ltx_guidance(pipe, scale: float) -> None:
+    """Best-effort override of LTX's guidance_scale.
+
+    Several diffusers builds expose ``guidance_scale`` as a read-only property
+    (instance assignment raises AttributeError).  diffusers stores the actual
+    value on the private ``_guidance_scale`` attribute that the property reads,
+    so we set that.  If neither attribute is writable, the pipeline's default
+    guidance is kept -- this call never raises.
+    """
+    for attr in ("_guidance_scale", "guidance_scale"):
+        try:
+            setattr(pipe, attr, float(scale))
+            return
+        except Exception:
+            continue
+
+
+def _run_ltx(pipe, kwargs: dict):
+    """Call the LTX pipeline, applying the negative prompt only when the
+    installed diffusers ``__call__`` accepts it (prevents a TypeError
+    regression on builds whose LTX __call__ signature lacks ``negative_prompt``)."""
+    if settings.AI_LTX_NEGATIVE_PROMPT:
+        try:
+            return pipe(**kwargs, negative_prompt=settings.AI_LTX_NEGATIVE_PROMPT)
+        except TypeError:
+            return pipe(**kwargs)
+    return pipe(**kwargs)
+
+
 def _generate_text_with_ltx(prompt: str, num_frames: int = None, width: int = 1280, height: int = 720):
     """Run the diffusers Lightricks/LTX-Video pipeline for pure TEXT-to-video.
 
@@ -247,7 +276,7 @@ def _generate_text_with_ltx(prompt: str, num_frames: int = None, width: int = 12
         """
     pipe = _get_pipeline("ltx")
     text = prompt or settings.AI_LTX_PROMPT or "cinematic camera motion"
-    pipe.guidance_scale = settings.AI_LTX_GUIDANCE_SCALE
+    _set_ltx_guidance(pipe, settings.AI_LTX_GUIDANCE_SCALE)
     kwargs = dict(
         prompt=text,
         # LTX needs a resolution even for text-to-video.
@@ -255,7 +284,6 @@ def _generate_text_with_ltx(prompt: str, num_frames: int = None, width: int = 12
         height=_resize_to_divisible_height(height, divisor=32),
         num_inference_steps=settings.AI_LTX_NUM_INFERENCE_STEPS,
         generator=settings.generator(),
-        negative_prompt=settings.AI_LTX_NEGATIVE_PROMPT,
     )
     if num_frames:
         kwargs["num_frames"] = num_frames
@@ -263,7 +291,7 @@ def _generate_text_with_ltx(prompt: str, num_frames: int = None, width: int = 12
         "LTX t2v: generating from prompt=%r steps=%s frames=%s ...",
         text, settings.AI_LTX_NUM_INFERENCE_STEPS, num_frames or "default",
     )
-    result = pipe(**kwargs)
+    result = _run_ltx(pipe, kwargs)
     frames = result.frames[0]
     return frames, kwargs["width"], kwargs["height"]
 
@@ -320,13 +348,12 @@ def _generate_with_ltx(image, prompt: str, num_frames: int = None):
     pipe = _get_pipeline("ltx")
     image = _resize_to_divisible(image, max_edge=1216, divisor=32)
     text = prompt or settings.AI_LTX_PROMPT
-    pipe.guidance_scale = settings.AI_LTX_GUIDANCE_SCALE
+    _set_ltx_guidance(pipe, settings.AI_LTX_GUIDANCE_SCALE)
     kwargs = dict(
         image=image,
         prompt=text,
         num_inference_steps=settings.AI_LTX_NUM_INFERENCE_STEPS,
         generator=settings.generator(),
-        negative_prompt=settings.AI_LTX_NEGATIVE_PROMPT,
     )
     if num_frames:
         kwargs["num_frames"] = num_frames
@@ -338,7 +365,7 @@ def _generate_with_ltx(image, prompt: str, num_frames: int = None):
         settings.AI_LTX_NUM_INFERENCE_STEPS,
         num_frames or "default",
     )
-    result = pipe(**kwargs)
+    result = _run_ltx(pipe, kwargs)
     frames = result.frames[0]
     return frames, image.width, image.height
 
