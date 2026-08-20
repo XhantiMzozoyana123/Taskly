@@ -249,9 +249,18 @@ def _set_ltx_guidance(pipe, scale: float) -> None:
     for attr in ("_guidance_scale", "guidance_scale"):
         try:
             setattr(pipe, attr, float(scale))
-            return
         except Exception:
-            continue
+            pass
+    # diffusers LTXVideoPipeline leaves text_encoder on CPU while the VAE/latents
+    # are on cuda; with guidance_scale > 1 the denoising loop raises
+    # "Expected all tensors to be on the same device, cpu and cuda:0" (index_select).
+    # Move the text encoder onto the pipeline device so embeddings land on cuda.
+    text_encoder = getattr(pipe, "text_encoder", None)
+    if text_encoder is not None:
+        try:
+            text_encoder.to(pipe.device)
+        except Exception:
+            pass
 
 
 def _run_ltx(pipe, kwargs: dict):
