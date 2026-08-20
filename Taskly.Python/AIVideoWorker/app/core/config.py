@@ -58,10 +58,12 @@ class Settings:
     AI_LTX_MODEL_ID: str = os.getenv("AI_LTX_MODEL_ID", "Lightricks/LTX-Video")
     AI_LTX_NUM_INFERENCE_STEPS: int = int(os.getenv("AI_LTX_NUM_INFERENCE_STEPS", "30"))
     AI_LTX_FPS: int = int(os.getenv("AI_LTX_FPS", "24"))
-    # Default text conditioning for LTX (used when a job has no prompt).
+    # Default text conditioning for LTX when a request omits the prompt.
+    # Generic/cinematic on purpose -- NOT real-estate specific, so the worker is
+    # usable for any topic (cars, products, nature, people, etc.).
     AI_LTX_PROMPT: str = os.getenv(
         "AI_LTX_PROMPT",
-        "real estate property tour, smooth camera motion, bright natural lighting",
+        "cinematic motion, smooth camera movement, high detail, 4k, ultra sharp",
         )
     # Per-photo clip length for the AI tour in frames. 0 -> use LTX default.
     AI_LTX_NUM_FRAMES: int = int(os.getenv("AI_LTX_NUM_FRAMES", "0"))

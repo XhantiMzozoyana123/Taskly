@@ -113,7 +113,7 @@ AI_MODEL=ltx
 AI_LTX_MODEL_ID=Lightricks/LTX-Video
 AI_LTX_NUM_INFERENCE_STEPS=30
 AI_LTX_FPS=24
-AI_LTX_PROMPT=real estate property tour, smooth camera motion, bright natural lighting
+AI_LTX_PROMPT=cinematic motion, smooth camera movement, high detail, 4k, ultra sharp
 AI_LTX_NUM_FRAMES=0
 # ai -> per-photo LTX clips crossfaded ; slideshow -> Ken Burns tour (no GPU)
 TOUR_STYLE=ai
