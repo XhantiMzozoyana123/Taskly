@@ -17,5 +17,7 @@ torchvision==0.20.1+cu124
 diffusers
 accelerate
 transformers
+# tiktoken required by the LTX text encoder
+tiktoken
 safetensors
 Pillow

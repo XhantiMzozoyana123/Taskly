@@ -93,6 +93,7 @@ echo "✅ Created Dockerfile.ltx2"
 cat > requirements-ltx2.txt <<'EOF'
 diffusers>=0.29
 transformers>=4.44
+tiktoken
 accelerate
 torch==2.5.1+cu124
 torchvision==0.20.1+cu124
