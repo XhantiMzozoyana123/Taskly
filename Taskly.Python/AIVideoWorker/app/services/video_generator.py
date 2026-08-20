@@ -167,10 +167,35 @@ def _load_ltx():
     return pipe
 
 
+def _load_wan():
+    """Load the Wan2.1 text-to-video pipeline (diffusers ``WanT2VPipeline``).
+
+    Requires diffusers >= 0.30 and the gated ``Wan-AI/Wan2.1-T2V-1.3B`` weights
+    (accept the license on Hugging Face and point ``AI_LTX_MODEL_ID`` at it).
+    The 1.3B variant runs in fp16 within ~11 GB, fitting the RTX A4000 (16 GB);
+    the 4.5B variant needs ~24 GB and is intentionally not used here.
+    """
+    import torch
+    from diffusers import WanT2VPipeline
+
+    logger.info("Loading Wan2.1 model %s ...", settings.AI_LTX_MODEL_ID)
+    pipe = WanT2VPipeline.from_pretrained(
+        settings.AI_LTX_MODEL_ID,
+        torch_dtype=torch.float16,
+        variant="fp16",
+    )
+    if settings.AI_DEVICE == "cuda":
+        pipe.to("cuda")
+    else:
+        pipe.to("cpu")
+    return pipe
+
+
 # Map an AI_MODEL name to the function that loads it.
 _MODEL_LOADERS = {
     "ltx": _load_ltx,
     "svd": _load_svd,
+    "wan": _load_wan,
 }
 
 
@@ -191,7 +216,7 @@ def _get_pipeline(model: str = "svd"):
 
         loader = _MODEL_LOADERS.get(model)
         if loader is None:
-            raise ValueError(f"Unknown AI model '{model}'. Use 'svd' or 'ltx'.")
+            raise ValueError(f"Unknown AI model '{model}'. Use 'svd', 'ltx', or 'wan'.")
 
         pipe = loader()
         _pipeline_cache[model] = pipe
@@ -273,6 +298,63 @@ def _run_ltx(pipe, kwargs: dict):
         except TypeError:
             return pipe(**kwargs)
     return pipe(**kwargs)
+
+
+def _wan_num_frames(num_frames: int) -> int:
+    """Snap a requested frame count to Wan2.1's supported grid.
+
+    Wan2.1 T2V only accepts fixed frame counts (21/41/61/81/121/145/201); we
+    round UP to the first supported value so short clips run fast and long
+    clips stay valid.
+    """
+    try:
+        n = int(num_frames or 0)
+    except (TypeError, ValueError):
+        n = 0
+    grid = (21, 41, 61, 81, 121, 145, 201)
+    for cand in grid:
+        if cand >= n:
+            return cand
+    return grid[-1]
+
+
+def _wan_resolution(width: int, height: int):
+    """Return a Wan2.1-supported (width, height) closest to the request.
+
+    Wan2.1 is trained natively at 720p.  Both dimensions are clamped to
+    16-pixel boundaries (the model VAE/patch grid) and floored at 320 px; the
+    1.3B checkpoint fits comfortably in 16 GB of VRAM at this resolution.
+    """
+    w = max(320, int(width or 1280))
+    h = max(320, int(height or 720))
+    return (w // 16) * 16, (h // 16) * 16
+
+
+def _generate_text_with_wan(prompt: str, num_frames: int, width: int, height: int):
+    """Run the diffusers Wan2.1 T2V pipeline for pure TEXT-to-video.
+
+    Wan2.1 (1.3B, native 720p, ~50 default denoising steps, strong prompt
+    adherence) is the closest local alternative to Google Veo on a 16 GB GPU.
+    Resolution and frame count are snapped to supported values; any failure
+    raises so the caller falls back to LTX and the worker always returns video.
+    """
+    pipe = _get_pipeline("wan")
+    n = _wan_num_frames(num_frames)
+    w, h = _wan_resolution(width, height)
+    result = pipe(
+        prompt=prompt,
+        num_frames=n,
+        height=h,
+        width=w,
+        generator=settings.generator(),
+    )
+    frames = getattr(result, "frames", None)
+    if frames is None and isinstance(result, (tuple, list)) and result:
+        frames = result[0]
+    if not frames:
+        raise RuntimeError("Wan2.1 pipeline returned no frames")
+    frames = frames[0]
+    return frames, w, h
 
 
 def _generate_text_with_ltx(prompt: str, num_frames: int = None, width: int = 1280, height: int = 720):
@@ -453,11 +535,12 @@ def generate_text_to_video(
     """
     num_frames = compute_t2v_frames(duration_seconds, int(fps))
 
-    # Prefer the real LTX-2 engine when its packages + GPU are available.
+    # Prefer the real LTX-2 engine when its packages + GPU are available
+    # (skipped when AI_MODEL=wan, which uses the Wan2.1 path below instead).
     try:
         from app.services import ltx2_engine
 
-        if ltx2_engine.ltx2_available():
+        if ltx2_engine.ltx2_available() and settings.AI_MODEL != "wan":
             logger.info("Using LTX-2 DistilledPipeline for text-to-video ...")
             engine = ltx2_engine.LTX2Engine.from_settings()
             nf = ltx2_engine.compute_num_frames(duration_seconds, int(fps))
@@ -479,6 +562,22 @@ def generate_text_to_video(
             "LTX-2 text-to-video unavailable; falling back to diffusers LTX.",
             exc_info=True,
         )
+
+    # Wan2.1 (diffusers WanT2VPipeline) -- closest LOCAL model to Google Veo on a
+    # 16 GB GPU (Wan2.1-1.3B, native 720p, strong motion coherence).  Enable with
+    #   AI_MODEL=wan  +  AI_LTX_MODEL_ID=Wan-AI/Wan2.1-T2V-1.3B
+    # (gated weights + diffusers >= 0.30).  Any failure -> graceful fallback to
+    # LTX, so the worker always emits a video.
+    if settings.AI_MODEL == "wan":
+        try:
+            logger.info("Using Wan2.1 T2V for text-to-video ...")
+            frames, w, h = _generate_text_with_wan(prompt, num_frames, width, height)
+            return write_frames_video(frames, output_path, fps=fps, width=w, height=h)
+        except Exception:
+            logger.warning(
+                "Wan2.1 text-to-video unavailable; falling back to LTX-Video.",
+                exc_info=True,
+            )
 
     # diffusers path (no ltx-core/ltx-pipelines required).
     if not ai_available():

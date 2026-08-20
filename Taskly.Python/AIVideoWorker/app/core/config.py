@@ -53,6 +53,7 @@ class Settings:
     # Which diffusion model animates a single image when a GPU is available.
     #   "ltx" -> Lightricks LTX-Video (fast, OpenArt-style motion) [default]
     #   "svd" -> Stable Video Diffusion
+    #   "wan" -> Wan2.1 T2V-1.3B (best local quality; ~11GB VRAM; gated weights, diffusers >= 0.30)
     AI_MODEL: str = os.getenv("AI_MODEL", "ltx")
     # LTX-Video model id (Lightricks/LTX-Video, ~2B params, bfloat16, fits 8GB+ GPUs).
     AI_LTX_MODEL_ID: str = os.getenv("AI_LTX_MODEL_ID", "Lightricks/LTX-Video")
