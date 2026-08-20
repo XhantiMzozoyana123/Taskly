@@ -54,7 +54,7 @@ class Settings:
     #   "ltx" -> Lightricks LTX-Video (fast, OpenArt-style motion) [default]
     #   "svd" -> Stable Video Diffusion
     #   "wan" -> Wan2.1 T2V-1.3B (best local quality; ~11GB VRAM; use the
-    #            Wan-AI/Wan2.1-T2V-1.3B-Diffusers repo; diffusers >= 0.30)
+    #            Wan-AI/Wan2.1-T2V-1.3B-Diffusers repo; diffusers >= 0.33)
     AI_MODEL: str = os.getenv("AI_MODEL", "ltx")
     # LTX-Video model id (Lightricks/LTX-Video, ~2B params, bfloat16, fits 8GB+ GPUs).
     AI_LTX_MODEL_ID: str = os.getenv("AI_LTX_MODEL_ID", "Lightricks/LTX-Video")
