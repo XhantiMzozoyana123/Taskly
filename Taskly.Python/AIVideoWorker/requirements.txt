@@ -34,4 +34,8 @@ sentencepiece
 # Python library; install it so the SentencePiece path succeeds (no tiktoken fallback).
 protobuf
 safetensors
+# ftfy is REQUIRED by the Wan2.1 diffusers pipeline (0.33): it is an optional
+# dependency there, but Wan's text cleaner calls ftfy.fix_text() unconditionally,
+# so without it every Wan text-to-video run crashes with "name 'ftfy' is not defined".
+ftfy
 Pillow

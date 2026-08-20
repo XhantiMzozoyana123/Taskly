@@ -197,9 +197,15 @@ def _load_wan():
         torch_dtype=torch.float16,
     )
     if settings.AI_DEVICE == "cuda":
-        pipe.to("cuda")
+        if settings.AI_CPU_OFFLOAD and hasattr(pipe, "enable_model_cpu_offload"):
+            pipe.enable_model_cpu_offload()
+            logger.info("CPU offload enabled for Wan2.1 (weights stream CPU<->GPU)")
+        else:
+            pipe.to("cuda")
+            logger.info("Wan2.1 pipeline on cuda")
     else:
         pipe.to("cpu")
+        logger.info("Wan2.1 pipeline on CPU (inference will be slow)")
     return pipe
 
 
