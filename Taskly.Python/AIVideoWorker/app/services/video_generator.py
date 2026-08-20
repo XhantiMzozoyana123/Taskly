@@ -209,11 +209,48 @@ def _load_wan():
     return pipe
 
 
+def _load_hunyuan():
+    """Load the diffusers HunyuanVideo text-to-video pipeline.
+
+    The ~13 BF16 transformer does not fit a 16 GB card as one tensor, so we load
+    it in bfloat16, the rest of the pipeline in float16, then call
+    ``enable_model_cpu_offload()`` (streams weights CPU<->GPU) plus
+    ``vae.enable_tiling()`` (tiles the 3D VAE decode).  This is the officially
+    documented way to run HunyuanVideo on 16 GB.  Requires diffusers >= 0.33.
+    """
+    import torch
+    from diffusers import HunyuanVideoPipeline, HunyuanVideoTransformer3DModel
+
+    model_id = settings.AI_HUNYUAN_MODEL_ID
+    logger.info("Loading HunyuanVideo model %s ...", model_id)
+    transformer = HunyuanVideoTransformer3DModel.from_pretrained(
+        model_id, subfolder="transformer", torch_dtype=torch.bfloat16
+    )
+    pipe = HunyuanVideoPipeline.from_pretrained(
+        model_id, transformer=transformer, torch_dtype=torch.float16
+    )
+    # Memory savings that make HunyuanVideo fit in 16 GB.
+    tiler = getattr(pipe.vae, "enable_tiling", None)
+    if callable(tiler):
+        tiler()
+    if settings.AI_CPU_OFFLOAD and hasattr(pipe, "enable_model_cpu_offload"):
+        pipe.enable_model_cpu_offload()
+        logger.info("HunyuanVideo CPU offload enabled (weights stream CPU<->GPU)")
+    elif settings.AI_DEVICE == "cuda":
+        pipe.to("cuda")
+        logger.info("HunyuanVideo pipeline on cuda")
+    else:
+        pipe.to("cpu")
+        logger.info("HunyuanVideo pipeline on CPU (inference will be slow)")
+    return pipe
+
+
 # Map an AI_MODEL name to the function that loads it.
 _MODEL_LOADERS = {
     "ltx": _load_ltx,
     "svd": _load_svd,
     "wan": _load_wan,
+    "hunyuan": _load_hunyuan,
 }
 
 
@@ -234,7 +271,7 @@ def _get_pipeline(model: str = "svd"):
 
         loader = _MODEL_LOADERS.get(model)
         if loader is None:
-            raise ValueError(f"Unknown AI model '{model}'. Use 'svd', 'ltx', or 'wan'.")
+            raise ValueError(f"Unknown AI model '{model}'. Use 'svd', 'ltx', 'wan', or 'hunyuan'.")
 
         pipe = loader()
         _pipeline_cache[model] = pipe
@@ -371,6 +408,65 @@ def _generate_text_with_wan(prompt: str, num_frames: int, width: int, height: in
         frames = result[0]
     if not frames:
         raise RuntimeError("Wan2.1 pipeline returned no frames")
+    frames = frames[0]
+    return frames, w, h
+
+
+def _hunyuan_num_frames(num_frames: int) -> int:
+    """Snap a requested frame count to HunyuanVideo's 4k+1 grid.
+
+    HunyuanVideo's 3D VAE works on frame counts of the form 4k+1 (61, 65, ...,
+    129 default).  Snap to that grid so short clips run fast and long clips stay
+    valid.
+    """
+    try:
+        n = int(num_frames or 0)
+    except (TypeError, ValueError):
+        n = 0
+    return max(5, ((n - 1) // 4) * 4 + 1)
+
+
+def _hunyuan_resolution(width: int, height: int):
+    """Return a HunyuanVideo-friendly (width, height) on 16-px boundaries.
+
+    HunyuanVideo's space/temporal VAE patch grid uses multiples of 16; clamp each
+    dim and floor it at 320 px so short requests stay valid.
+    """
+    w = max(320, int(width or 1280))
+    h = max(320, int(height or 720))
+    return (w // 16) * 16, (h // 16) * 16
+
+
+def _generate_text_with_hunyuan(
+    prompt: str, num_frames: int, width: int, height: int
+):
+    """Run the diffusers HunyuanVideo pipeline for pure TEXT-to-video.
+
+    HunyuanVideo is a strong local candidate on 16 GB cards (its text encoder is
+    far lighter than Wan's ~12 GB), and ``_load_hunyuan`` enabled model CPU
+    offload + VAE tiling so it fits the RTX A4000.  Returns (frames, w, h).
+    """
+    pipe = _get_pipeline("hunyuan")
+    n = _hunyuan_num_frames(num_frames)
+    w, h = _hunyuan_resolution(width, height)
+    text = prompt or settings.AI_LTX_PROMPT or "cinematic camera motion"
+    logger.info(
+        "HunyuanVideo t2v: prompt=%r steps=%s frames=%d %dx%d ...",
+        text, settings.AI_LTX_NUM_INFERENCE_STEPS, n, w, h,
+    )
+    result = pipe(
+        prompt=text,
+        height=h,
+        width=w,
+        num_frames=n,
+        num_inference_steps=settings.AI_LTX_NUM_INFERENCE_STEPS,
+        generator=settings.generator(),
+    )
+    frames = getattr(result, "frames", None)
+    if frames is None and isinstance(result, (tuple, list)) and result:
+        frames = result[0]
+    if not frames:
+        raise RuntimeError("HunyuanVideo pipeline returned no frames")
     frames = frames[0]
     return frames, w, h
 
@@ -554,11 +650,11 @@ def generate_text_to_video(
     num_frames = compute_t2v_frames(duration_seconds, int(fps))
 
     # Prefer the real LTX-2 engine when its packages + GPU are available
-    # (skipped when AI_MODEL=wan, which uses the Wan2.1 path below instead).
+    # (skipped when AI_MODEL is wan or hunyuan, which use dedicated paths below).
     try:
         from app.services import ltx2_engine
 
-        if ltx2_engine.ltx2_available() and settings.AI_MODEL != "wan":
+        if ltx2_engine.ltx2_available() and settings.AI_MODEL not in ("wan", "hunyuan"):
             logger.info("Using LTX-2 DistilledPipeline for text-to-video ...")
             engine = ltx2_engine.LTX2Engine.from_settings()
             nf = ltx2_engine.compute_num_frames(duration_seconds, int(fps))
@@ -599,6 +695,23 @@ def generate_text_to_video(
             # worker marks the job FAILED with the Wan traceback in job.error
             # (visible via GET /api/video/status/{job_id}).
             logger.error("Wan2.1 generation failed; marking job as failed.", exc_info=True)
+            raise
+
+    # HunyuanVideo (diffusers HunyuanVideoPipeline, 16 GB-friendly with CPU
+    # offload + VAE tiling). Enable with  AI_MODEL=hunyuan
+    #   +  AI_HUNYUAN_MODEL_ID=hunyuanvideo-community/HunyuanVideo
+    # Any failure is logged and the job is marked FAILED (no silent fallback).
+    if settings.AI_MODEL == "hunyuan":
+        if not ai_available():
+            raise RuntimeError(
+                "diffusers+torch are not installed; cannot run HunyuanVideo"
+            )
+        logger.info("Using HunyuanVideo for text-to-video ...")
+        try:
+            frames, w, h = _generate_text_with_hunyuan(prompt, num_frames, width, height)
+            return write_frames_video(frames, output_path, fps=fps, width=w, height=h)
+        except Exception:
+            logger.error("HunyuanVideo generation failed; marking job as failed.", exc_info=True)
             raise
 
     # diffusers path (no ltx-core/ltx-pipelines required).

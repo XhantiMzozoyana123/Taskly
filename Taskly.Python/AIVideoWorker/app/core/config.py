@@ -60,6 +60,12 @@ class Settings:
     AI_LTX_MODEL_ID: str = os.getenv("AI_LTX_MODEL_ID", "Lightricks/LTX-Video")
     AI_LTX_NUM_INFERENCE_STEPS: int = int(os.getenv("AI_LTX_NUM_INFERENCE_STEPS", "30"))
     AI_LTX_FPS: int = int(os.getenv("AI_LTX_FPS", "24"))
+    # HunyuanVideo (diffusers, 16 GB-friendly): ~13B, bf16 transformer, runs on a
+    # 16 GB card via enable_model_cpu_offload() + vae.enable_tiling(). Community
+    # diffusers-format fork of the official tencent/HunyuanVideo (not gated).
+    AI_HUNYUAN_MODEL_ID: str = os.getenv(
+        "AI_HUNYUAN_MODEL_ID", "hunyuanvideo-community/HunyuanVideo"
+    )
     # Default text conditioning for LTX when a request omits the prompt.
     # Generic/cinematic on purpose -- NOT real-estate specific, so the worker is
     # usable for any topic (cars, products, nature, people, etc.).
