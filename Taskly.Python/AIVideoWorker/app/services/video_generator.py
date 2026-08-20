@@ -168,21 +168,31 @@ def _load_ltx():
 
 
 def _load_wan():
-    """Load the Wan2.1 text-to-video pipeline (diffusers ``WanT2VPipeline``).
+    """Load the Wan2.1 text-to-video pipeline.
 
-    Requires diffusers >= 0.30 and the gated ``Wan-AI/Wan2.1-T2V-1.3B`` weights
-    (accept the license on Hugging Face and point ``AI_LTX_MODEL_ID`` at it).
+    Uses diffusers' auto ``DiffusionPipeline`` (which resolves
+    ``Wan-AI/Wan2.1-T2V-1.3B`` to the registered Wan2.1 T2V pipeline) instead of
+    importing ``WanT2VPipeline`` directly -- the pipeline class name differs across
+    diffusers releases (``WanT2VPipeline`` in 0.30/0.31, ``WanPipeline`` on main),
+    so the auto class is the only import that is stable across versions.
+
+    The 1.3B weights ship as a single fp16 ``diffusion_pytorch_model.safetensors``
+    (the default file), so NO ``variant`` is passed: requesting
+    ``variant="fp16"`` makes ``from_pretrained`` raise
+    "does not have a file named ...diffusion_pytorch_model.fp16.safetensors".
     The 1.3B variant runs in fp16 within ~11 GB, fitting the RTX A4000 (16 GB);
     the 4.5B variant needs ~24 GB and is intentionally not used here.
+
+    Requires diffusers >= 0.30 and the gated ``Wan-AI/Wan2.1-T2V-1.3B`` weights
+    (accept the license on Hugging Face and set ``AI_LTX_MODEL_ID`` to it).
     """
     import torch
-    from diffusers import WanT2VPipeline
+    from diffusers import DiffusionPipeline
 
     logger.info("Loading Wan2.1 model %s ...", settings.AI_LTX_MODEL_ID)
-    pipe = WanT2VPipeline.from_pretrained(
+    pipe = DiffusionPipeline.from_pretrained(
         settings.AI_LTX_MODEL_ID,
         torch_dtype=torch.float16,
-        variant="fp16",
     )
     if settings.AI_DEVICE == "cuda":
         pipe.to("cuda")
@@ -563,8 +573,9 @@ def generate_text_to_video(
             exc_info=True,
         )
 
-    # Wan2.1 (diffusers WanT2VPipeline) -- closest LOCAL model to Google Veo on a
-    # 16 GB GPU (Wan2.1-1.3B, native 720p, strong motion coherence).  Enable with
+    # Wan2.1 (diffusers Wan2.1 pipeline via DiffusionPipeline) -- closest LOCAL
+    # model to Google Veo on a 16 GB GPU (Wan2.1-1.3B, native 720p, strong motion
+    # coherence).  Enable with
     #   AI_MODEL=wan  +  AI_LTX_MODEL_ID=Wan-AI/Wan2.1-T2V-1.3B
     # (gated weights + diffusers >= 0.30).  Any failure is logged and the job is
     # marked FAILED (no silent LTX fallback) so Wan output stays attributable.

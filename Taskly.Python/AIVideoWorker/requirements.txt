@@ -14,7 +14,7 @@ av
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
 torch==2.5.1+cu124
 torchvision==0.20.1+cu124
-diffusers
+diffusers>=0.30,<0.32
 accelerate
 transformers
 # tiktoken required by the LTX text encoder
