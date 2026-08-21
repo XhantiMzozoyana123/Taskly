@@ -144,23 +144,39 @@ def _load_ltx():
     """Load and return the Lightricks LTX-Video pipeline.
 
     LTX-Video is a DiT-based image-to-video model (T5 text encoder, loaded via
-    diffusers). It is loaded in bfloat16 to keep VRAM low (~4 GB for the 2B
-    checkpoint), which fits 8 GB+ GPUs.
+    diffusers). On CUDA we load it in ``fp16`` by default (``AI_USE_FP16``): the
+    1.3B checkpoint fits the 16 GB RTX A4000 directly in fp16 (~11 GB resident)
+    and fp16 keeps cuDNN's 3-D convolutions happy. The previous default of
+    ``bfloat16`` hit ``CUDNN_STATUS_NOT_INITIALIZED`` mid-denoise on the A4000
+    (Ampere + driver 560.x: cuDNN rejects bf16 Conv3d), and enabling
+    ``enable_model_cpu_offload`` made it worse by dragging those ops across the
+    cuda<->CPU boundary. Since LTX fits the card fully on-GPU, we therefore keep
+    the whole pipeline resident on cuda and do NOT offload here -- the exact
+    configuration that produced the earlier working LTX clips.
     """
     import torch
     from diffusers import DiffusionPipeline
 
+    # fp16 is VRAM-tight yet cuDNN-safe on this GPU; bf16 Conv3d triggers
+    # CUDNN_STATUS_NOT_INITIALIZED on Amp/Ada drivers (560.x / CUDA 12.6).
+    dtype = torch.float16 if settings.AI_USE_FP16 else torch.bfloat16
+
     logger.info("Loading LTX-Video model %s ...", settings.AI_LTX_MODEL_ID)
     pipe = DiffusionPipeline.from_pretrained(
         settings.AI_LTX_MODEL_ID,
-        torch_dtype=torch.bfloat16,
+        torch_dtype=dtype,
     )
 
     if settings.AI_DEVICE == "cuda":
         pipe.to("cuda")
-        if settings.AI_CPU_OFFLOAD and hasattr(pipe, "enable_model_cpu_offload"):
-            pipe.enable_model_cpu_offload()
-            logger.info("CPU offload enabled for LTX")
+        # Intentionally do NOT call enable_model_cpu_offload() for LTX: the 1.3B
+        # model fits 16 GB in fp16, and offloading forces the VAE/patch-embed
+        # Conv3d ops across the cuda<->CPU boundary -- which is what raised
+        # cuDNN CUDNN_STATUS_NOT_INITIALIZED during denoising. Keep it resident.
+        logger.info(
+            "LTX pipeline on cuda (%s) - no CPU offload (resident in VRAM)",
+            "fp16" if settings.AI_USE_FP16 else "bf16",
+        )
     else:
         pipe.to("cpu")
         logger.info("LTX pipeline on CPU (inference will be slow)")
