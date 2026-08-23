@@ -117,11 +117,17 @@ def _load_wan():
         torch_dtype=torch.float16,
     )
     if settings.AI_DEVICE == "cuda":
-        # Wan2.1-T2V-1.3B needs only ~8 GB VRAM (per the official repo), so the
-        # whole pipeline stays RESIDENT on cuda. enable_model_cpu_offload() drags
-        # convs across the cuda<->CPU boundary -> cuDNN NOT_INITIALIZED here.
-        pipe.to("cuda")
-        logger.info("Wan2.1 pipeline resident on cuda (~8 GB fp16)")
+        # Wan's umT5-XXL text encoder is ~9 GB fp16 BY ITSELF, so the full
+        # pipeline (~12.5 GB weights) cannot sit resident on a 16 GB card --
+        # measured 15.4 GiB PyTorch allocation and OOM. enable_model_cpu_offload()
+        # keeps the 1.3B DiT + VAE on GPU and streams the text encoder to CPU
+        # except while encoding the prompt -- this is the officially supported
+        # way to fit Wan2.1 on consumer GPUs. (fp16, so no bf16-cuDNN issue.)
+        pipe.enable_model_cpu_offload()
+        logger.info(
+            "Wan2.1 pipeline on cuda with CPU offload "
+            "(DiT+VAE resident, umT5 encoder streamed)"
+        )
     else:
         pipe.to("cpu")
         logger.info("Wan2.1 pipeline on CPU (inference will be slow)")
