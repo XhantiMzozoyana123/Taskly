@@ -1,8 +1,8 @@
-"""AI image-to-video generation using HuggingFace models.
+"""AI TEXT-to-video generation using Wan2.1 (only supported model).
 
 Supports animating a single image with a diffusion model.  The active model is
-selected by ``settings.AI_MODEL``: by default **Lightricks LTX-Video** (fast,
-OpenArt-style motion), with **Stable Video Diffusion** as an alternative.  When
+selected by ``settings.AI_MODEL``: **Wan2.1 T2V-1.3B** is the only backend
+in this build.  When
 torch/diffusers are unavailable the caller falls back to the Ken Burns
 slideshow in :mod:`app.services.slideshow`.
 
@@ -20,14 +20,13 @@ from app.core.config import settings
 
 logger = logging.getLogger("aivideoworker.video_generator")
 
-# Heavy pipelines are loaded once and cached per-model (svd / ltx) so that
+# Heavy pipelines are loaded once and cached per-model (wan) so that
 # subsequent jobs reuse them instead of re-downloading the weights.
 _pipeline_cache: dict = {}
 _pipeline_lock = threading.Lock()
 
-# Supported model IDs
-SVD_MODEL_ID = "stabilityai/stable-video-diffusion-img2vid"
-LTX_MODEL_ID = "Lightricks/LTX-Video"
+# Supported model id (Wan-only build).
+WAN_MODEL_ID = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
 
 
 _ai_import_error: str = ""
@@ -88,101 +87,6 @@ def model_available(model_id: str) -> bool:
         return False
 
 
-def _resize_for_svd(image) -> "Image.Image":
-    """Resize an image so its dimensions are multiples of 64 (SVD requires it),
-    keeping the aspect ratio and fitting within the configured max edge."""
-    from PIL import Image  # lazy import keeps the module importable w/o Pillow
-
-    width, height = image.size
-    max_edge = settings.AI_MAX_EDGE
-    scale = min(1.0, max_edge / max(width, height))
-
-    new_width = max(64, int(width * scale) // 64 * 64)
-    new_height = max(64, int(height * scale) // 64 * 64)
-
-    if (new_width, new_height) != (width, height):
-        image = image.resize((new_width, new_height), Image.LANCZOS)
-    return image
-
-
-def _load_svd():
-    """Load and return the Stable Video Diffusion pipeline."""
-    import torch
-    from diffusers import StableVideoDiffusionPipeline
-
-    logger.info("Loading Stable Video Diffusion model %s ...", settings.AI_MODEL_ID)
-    dtype = torch.float16 if settings.AI_USE_FP16 else torch.float32
-
-    pipe = StableVideoDiffusionPipeline.from_pretrained(
-        settings.AI_MODEL_ID,
-        torch_dtype=dtype,
-        variant="fp16" if settings.AI_USE_FP16 else None,
-    )
-
-    if settings.AI_DEVICE == "cuda":
-        pipe.to("cuda")
-        # Optional optimizations - only apply when the pipeline supports them.
-        if hasattr(pipe, "enable_vae_tiling"):
-            pipe.enable_vae_tiling()
-        if settings.AI_CPU_OFFLOAD and hasattr(pipe, "enable_model_cpu_offload"):
-            pipe.enable_model_cpu_offload()
-            logger.info(
-                "CPU offload enabled - weights stream between CPU/GPU "
-                "(may cause device mismatch with SVD fp16)"
-            )
-        else:
-            logger.info(
-                "CPU offload disabled - full pipeline stays on %s", settings.AI_DEVICE
-            )
-    else:
-        pipe.to("cpu")
-        logger.info("SVD pipeline on CPU (inference will be slow)")
-    return pipe
-
-
-def _load_ltx():
-    """Load and return the Lightricks LTX-Video pipeline.
-
-    LTX-Video is a DiT-based image-to-video model (T5 text encoder, loaded via
-    diffusers). On CUDA we load it in ``fp16`` by default (``AI_USE_FP16``): the
-    1.3B checkpoint fits the 16 GB RTX A4000 directly in fp16 (~11 GB resident)
-    and fp16 keeps cuDNN's 3-D convolutions happy. The previous default of
-    ``bfloat16`` hit ``CUDNN_STATUS_NOT_INITIALIZED`` mid-denoise on the A4000
-    (Ampere + driver 560.x: cuDNN rejects bf16 Conv3d), and enabling
-    ``enable_model_cpu_offload`` made it worse by dragging those ops across the
-    cuda<->CPU boundary. Since LTX fits the card fully on-GPU, we therefore keep
-    the whole pipeline resident on cuda and do NOT offload here -- the exact
-    configuration that produced the earlier working LTX clips.
-    """
-    import torch
-    from diffusers import DiffusionPipeline
-
-    # fp16 is VRAM-tight yet cuDNN-safe on this GPU; bf16 Conv3d triggers
-    # CUDNN_STATUS_NOT_INITIALIZED on Amp/Ada drivers (560.x / CUDA 12.6).
-    dtype = torch.float16 if settings.AI_USE_FP16 else torch.bfloat16
-
-    logger.info("Loading LTX-Video model %s ...", settings.AI_LTX_MODEL_ID)
-    pipe = DiffusionPipeline.from_pretrained(
-        settings.AI_LTX_MODEL_ID,
-        torch_dtype=dtype,
-    )
-
-    if settings.AI_DEVICE == "cuda":
-        pipe.to("cuda")
-        # Intentionally do NOT call enable_model_cpu_offload() for LTX: the 1.3B
-        # model fits 16 GB in fp16, and offloading forces the VAE/patch-embed
-        # Conv3d ops across the cuda<->CPU boundary -- which is what raised
-        # cuDNN CUDNN_STATUS_NOT_INITIALIZED during denoising. Keep it resident.
-        logger.info(
-            "LTX pipeline on cuda (%s) - no CPU offload (resident in VRAM)",
-            "fp16" if settings.AI_USE_FP16 else "bf16",
-        )
-    else:
-        pipe.to("cpu")
-        logger.info("LTX pipeline on CPU (inference will be slow)")
-    return pipe
-
-
 def _load_wan():
     """Load the Wan2.1 text-to-video pipeline.
 
@@ -213,71 +117,30 @@ def _load_wan():
         torch_dtype=torch.float16,
     )
     if settings.AI_DEVICE == "cuda":
-        if settings.AI_CPU_OFFLOAD and hasattr(pipe, "enable_model_cpu_offload"):
-            pipe.enable_model_cpu_offload()
-            logger.info("CPU offload enabled for Wan2.1 (weights stream CPU<->GPU)")
-        else:
-            pipe.to("cuda")
-            logger.info("Wan2.1 pipeline on cuda")
+        # Wan2.1-T2V-1.3B needs only ~8 GB VRAM (per the official repo), so the
+        # whole pipeline stays RESIDENT on cuda. enable_model_cpu_offload() drags
+        # convs across the cuda<->CPU boundary -> cuDNN NOT_INITIALIZED here.
+        pipe.to("cuda")
+        logger.info("Wan2.1 pipeline resident on cuda (~8 GB fp16)")
     else:
         pipe.to("cpu")
         logger.info("Wan2.1 pipeline on CPU (inference will be slow)")
     return pipe
 
 
-def _load_hunyuan():
-    """Load the diffusers HunyuanVideo text-to-video pipeline.
-
-    The ~13 BF16 transformer does not fit a 16 GB card as one tensor, so we load
-    it in bfloat16, the rest of the pipeline in float16, then call
-    ``enable_model_cpu_offload()`` (streams weights CPU<->GPU) plus
-    ``vae.enable_tiling()`` (tiles the 3D VAE decode).  This is the officially
-    documented way to run HunyuanVideo on 16 GB.  Requires diffusers >= 0.33.
-    """
-    import torch
-    from diffusers import HunyuanVideoPipeline, HunyuanVideoTransformer3DModel
-
-    model_id = settings.AI_HUNYUAN_MODEL_ID
-    logger.info("Loading HunyuanVideo model %s ...", model_id)
-    transformer = HunyuanVideoTransformer3DModel.from_pretrained(
-        model_id, subfolder="transformer", torch_dtype=torch.bfloat16
-    )
-    pipe = HunyuanVideoPipeline.from_pretrained(
-        model_id, transformer=transformer, torch_dtype=torch.float16
-    )
-    # Memory savings that make HunyuanVideo fit in 16 GB.
-    tiler = getattr(pipe.vae, "enable_tiling", None)
-    if callable(tiler):
-        tiler()
-    if settings.AI_CPU_OFFLOAD and hasattr(pipe, "enable_model_cpu_offload"):
-        pipe.enable_model_cpu_offload()
-        logger.info("HunyuanVideo CPU offload enabled (weights stream CPU<->GPU)")
-    elif settings.AI_DEVICE == "cuda":
-        pipe.to("cuda")
-        logger.info("HunyuanVideo pipeline on cuda")
-    else:
-        pipe.to("cpu")
-        logger.info("HunyuanVideo pipeline on CPU (inference will be slow)")
-    return pipe
-
-
-# Map an AI_MODEL name to the function that loads it.
 _MODEL_LOADERS = {
-    "ltx": _load_ltx,
-    "svd": _load_svd,
     "wan": _load_wan,
-    "hunyuan": _load_hunyuan,
 }
 
 
-def _get_pipeline(model: str = "svd"):
+def _get_pipeline(model: str = "wan"):
     """Load (once) and return the cached pipeline for the requested model.
 
-    ``model`` may be ``"svd"`` (Stable Video Diffusion) or ``"ltx"`` (LTX-Video).
+    `Only ``"wan"`` (Wan2.1 T2V) is supported in this build.
     Each pipeline is loaded and cached independently, so switching models only
     pays the load cost once.
     """
-    model = (model or "svd").lower()
+    model = (model or "wan").lower()
     if model in _pipeline_cache:
         return _pipeline_cache[model]
 
@@ -287,88 +150,12 @@ def _get_pipeline(model: str = "svd"):
 
         loader = _MODEL_LOADERS.get(model)
         if loader is None:
-            raise ValueError(f"Unknown AI model '{model}'. Use 'svd', 'ltx', 'wan', or 'hunyuan'.")
+            raise ValueError(f"Unknown AI model '{model}'. This build supports 'wan' only.")
 
         pipe = loader()
         _pipeline_cache[model] = pipe
         logger.info("%s pipeline ready on %s", model.upper(), settings.AI_DEVICE)
         return pipe
-
-
-def _resize_to_divisible(image, max_edge: int = 1216, divisor: int = 32):
-    """Resize ``image`` so both dimensions are multiples of ``divisor`` (the
-    LTX VAE requires divisible spatial dims), preserving aspect ratio and
-    keeping the longest side <= ``max_edge``.
-    """
-    from PIL import Image  # lazy import keeps the module importable w/o Pillow
-
-    width, height = image.size
-    scale = min(1.0, max_edge / max(width, height))
-    new_width = max(divisor, int(width * scale) // divisor * divisor)
-    new_height = max(divisor, int(height * scale) // divisor * divisor)
-    if (new_width, new_height) != (width, height):
-        image = image.resize((new_width, new_height), Image.LANCZOS)
-    return image
-
-
-def _generate_with_svd(image):
-    """Run Stable Video Diffusion on ``image``; return ``(frames, w, h)``."""
-    pipe = _get_pipeline("svd")
-    image = _resize_for_svd(image)
-    logger.info(
-        "SVD: generating %s frames at %s fps from image (%sx%s) ...",
-        settings.AI_NUM_FRAMES,
-        settings.AI_FPS,
-        image.width,
-        image.height,
-    )
-    frames = pipe(
-        image=image,
-        num_frames=settings.AI_NUM_FRAMES,
-        decode_chunk_size=settings.AI_DECODE_CHUNK_SIZE,
-        motion_bucket_id=settings.AI_MOTION_BUCKET_ID,
-        noise_aug_strength=settings.AI_NOISE_AUG_STRENGTH,
-        generator=settings.generator(),
-    ).frames[0]
-    return frames, image.width, image.height
-
-
-def _set_ltx_guidance(pipe, scale: float) -> None:
-    """Best-effort override of LTX's guidance_scale.
-
-    Several diffusers builds expose ``guidance_scale`` as a read-only property
-    (instance assignment raises AttributeError).  diffusers stores the actual
-    value on the private ``_guidance_scale`` attribute that the property reads,
-    so we set that.  If neither attribute is writable, the pipeline's default
-    guidance is kept -- this call never raises.
-    """
-    for attr in ("_guidance_scale", "guidance_scale"):
-        try:
-            setattr(pipe, attr, float(scale))
-        except Exception:
-            pass
-    # diffusers LTXVideoPipeline leaves text_encoder on CPU while the VAE/latents
-    # are on cuda; with guidance_scale > 1 the denoising loop raises
-    # "Expected all tensors to be on the same device, cpu and cuda:0" (index_select).
-    # Move the text encoder onto the pipeline device so embeddings land on cuda.
-    text_encoder = getattr(pipe, "text_encoder", None)
-    if text_encoder is not None:
-        try:
-            text_encoder.to(pipe.device)
-        except Exception:
-            pass
-
-
-def _run_ltx(pipe, kwargs: dict):
-    """Call the LTX pipeline, applying the negative prompt only when the
-    installed diffusers ``__call__`` accepts it (prevents a TypeError
-    regression on builds whose LTX __call__ signature lacks ``negative_prompt``)."""
-    if settings.AI_LTX_NEGATIVE_PROMPT:
-        try:
-            return pipe(**kwargs, negative_prompt=settings.AI_LTX_NEGATIVE_PROMPT)
-        except TypeError:
-            return pipe(**kwargs)
-    return pipe(**kwargs)
 
 
 def _wan_num_frames(num_frames: int) -> int:
@@ -407,7 +194,7 @@ def _generate_text_with_wan(prompt: str, num_frames: int, width: int, height: in
     Wan2.1 (1.3B, native 720p, ~50 default denoising steps, strong prompt
     adherence) is the closest local alternative to Google Veo on a 16 GB GPU.
     Resolution and frame count are snapped to supported values; any failure
-    raises so the caller falls back to LTX and the worker always returns video.
+    raises so the worker marks the job failed with the Wan traceback.
     """
     pipe = _get_pipeline("wan")
     n = _wan_num_frames(num_frames)
@@ -426,103 +213,6 @@ def _generate_text_with_wan(prompt: str, num_frames: int, width: int, height: in
         raise RuntimeError("Wan2.1 pipeline returned no frames")
     frames = frames[0]
     return frames, w, h
-
-
-def _hunyuan_num_frames(num_frames: int) -> int:
-    """Snap a requested frame count to HunyuanVideo's 4k+1 grid.
-
-    HunyuanVideo's 3D VAE works on frame counts of the form 4k+1 (61, 65, ...,
-    129 default).  Snap to that grid so short clips run fast and long clips stay
-    valid.
-    """
-    try:
-        n = int(num_frames or 0)
-    except (TypeError, ValueError):
-        n = 0
-    return max(5, ((n - 1) // 4) * 4 + 1)
-
-
-def _hunyuan_resolution(width: int, height: int):
-    """Return a HunyuanVideo-friendly (width, height) on 16-px boundaries.
-
-    HunyuanVideo's space/temporal VAE patch grid uses multiples of 16; clamp each
-    dim and floor it at 320 px so short requests stay valid.
-    """
-    w = max(320, int(width or 1280))
-    h = max(320, int(height or 720))
-    return (w // 16) * 16, (h // 16) * 16
-
-
-def _generate_text_with_hunyuan(
-    prompt: str, num_frames: int, width: int, height: int
-):
-    """Run the diffusers HunyuanVideo pipeline for pure TEXT-to-video.
-
-    HunyuanVideo is a strong local candidate on 16 GB cards (its text encoder is
-    far lighter than Wan's ~12 GB), and ``_load_hunyuan`` enabled model CPU
-    offload + VAE tiling so it fits the RTX A4000.  Returns (frames, w, h).
-    """
-    pipe = _get_pipeline("hunyuan")
-    n = _hunyuan_num_frames(num_frames)
-    w, h = _hunyuan_resolution(width, height)
-    text = prompt or settings.AI_LTX_PROMPT or "cinematic camera motion"
-    logger.info(
-        "HunyuanVideo t2v: prompt=%r steps=%s frames=%d %dx%d ...",
-        text, settings.AI_LTX_NUM_INFERENCE_STEPS, n, w, h,
-    )
-    result = pipe(
-        prompt=text,
-        height=h,
-        width=w,
-        num_frames=n,
-        num_inference_steps=settings.AI_LTX_NUM_INFERENCE_STEPS,
-        generator=settings.generator(),
-    )
-    frames = getattr(result, "frames", None)
-    if frames is None and isinstance(result, (tuple, list)) and result:
-        frames = result[0]
-    if not frames:
-        raise RuntimeError("HunyuanVideo pipeline returned no frames")
-    frames = frames[0]
-    return frames, w, h
-
-
-def _generate_text_with_ltx(prompt: str, num_frames: int = None, width: int = 1280, height: int = 720):
-    """Run the diffusers Lightricks/LTX-Video pipeline for pure TEXT-to-video.
-
-    Uses the same already-loaded diffusers LTX pipeline as the image tour
-    (``_get_pipeline("ltx")``), but omits the ``image`` conditioning so LTX
-    generates motion from the prompt alone.  Returns ``(frames, width, height)``
-    at LTX's native VAE-divisible resolution.
-        """
-    pipe = _get_pipeline("ltx")
-    text = prompt or settings.AI_LTX_PROMPT or "cinematic camera motion"
-    _set_ltx_guidance(pipe, settings.AI_LTX_GUIDANCE_SCALE)
-    kwargs = dict(
-        prompt=text,
-        # LTX needs a resolution even for text-to-video.
-        width=_resize_to_divisible_width(width, divisor=32),
-        height=_resize_to_divisible_height(height, divisor=32),
-        num_inference_steps=settings.AI_LTX_NUM_INFERENCE_STEPS,
-        generator=settings.generator(),
-    )
-    if num_frames:
-        kwargs["num_frames"] = num_frames
-    logger.info(
-        "LTX t2v: generating from prompt=%r steps=%s frames=%s ...",
-        text, settings.AI_LTX_NUM_INFERENCE_STEPS, num_frames or "default",
-    )
-    result = _run_ltx(pipe, kwargs)
-    frames = result.frames[0]
-    return frames, kwargs["width"], kwargs["height"]
-
-
-def _resize_to_divisible_width(w: int, divisor: int = 32) -> int:
-    return max(divisor, int(w) // divisor * divisor)
-
-
-def _resize_to_divisible_height(h: int, divisor: int = 32) -> int:
-    return max(divisor, int(h) // divisor * divisor)
 
 
 def _pil_from_bytes(data: bytes) -> "Image.Image":
@@ -558,84 +248,11 @@ def _pil_from_bytes(data: bytes) -> "Image.Image":
         return Image.fromarray(img)
 
 
-def _generate_with_ltx(image, prompt: str, num_frames: int = None):
-    """Run LTX-Video on ``image`` (+ optional ``prompt``); return ``(frames, w, h)``.
-
-    LTX is an image-conditioned DiT video model.  ``prompt`` is optional -- when
-    empty ``settings.AI_LTX_PROMPT`` is used.  ``num_frames`` is optional; when 0
-    or None LTX uses its own default frame count.  Output frames are returned at
-    LTX's native (VAE-divisible) resolution.
-        """
-    pipe = _get_pipeline("ltx")
-    image = _resize_to_divisible(image, max_edge=1216, divisor=32)
-    text = prompt or settings.AI_LTX_PROMPT
-    _set_ltx_guidance(pipe, settings.AI_LTX_GUIDANCE_SCALE)
-    kwargs = dict(
-        image=image,
-        prompt=text,
-        num_inference_steps=settings.AI_LTX_NUM_INFERENCE_STEPS,
-        generator=settings.generator(),
-    )
-    if num_frames:
-        kwargs["num_frames"] = num_frames
-    logger.info(
-        "LTX: animating image (%sx%s) with prompt=%r steps=%s frames=%s ...",
-        image.width,
-        image.height,
-        text,
-        settings.AI_LTX_NUM_INFERENCE_STEPS,
-        num_frames or "default",
-    )
-    result = _run_ltx(pipe, kwargs)
-    frames = result.frames[0]
-    return frames, image.width, image.height
-
-
-def generate_image_to_video(
-    image_bytes: bytes,
-    output_path: Path,
-    prompt: str = "",
-    model: str = None,
-    fps: int = None,
-) -> Path:
-    """Generate a video that brings ``image_bytes`` to life.
-
-    The AI image-to-video model is selected via ``model`` (or
-    ``settings.AI_MODEL`` when omitted):
-
-    * ``"ltx"`` -> Lightricks LTX-Video (default, fast OpenArt-style motion)
-    * ``"svd"`` -> Stable Video Diffusion
-
-    LTX is tried first; if the selected model cannot be loaded or run (e.g. an
-    incompatible diffusers version, missing weights, or OOM), the call
-    transparently falls back to SVD so a video is still produced, and a warning
-    is logged.  Returns the path to the written video file (container/codec
-    chosen from the ``output_path`` extension).  Raises on failure.
-    """
-    model = (model or settings.AI_MODEL).lower()
-    image = _pil_from_bytes(image_bytes)
-
-    if fps is None:
-        fps = settings.AI_LTX_FPS if model == "ltx" else settings.AI_FPS
-
-    try:
-        if model == "ltx":
-            frames, width, height = _generate_with_ltx(image, prompt=prompt)
-        else:
-            frames, width, height = _generate_with_svd(image)
-    except Exception:
-        if model == "ltx":
-            logger.warning(
-                "LTX-Video generation failed; falling back to Stable Video "
-                "Diffusion.",
-                exc_info=True,
-            )
-            frames, width, height = _generate_with_svd(image)
-        else:
-            raise
-
-    return write_frames_video(
-        frames, output_path, fps=fps, width=width, height=height
+def generate_image_to_video(*args, **kwargs):
+    """Disabled in the Wan-only build (Wan I2V is 14B, ~24 GB+ VRAM)."""
+    raise NotImplementedError(
+        "Image-to-video is disabled in this Wan-only build: Wan2.1 I2V ships "
+        "only as the 14B model (~24 GB+ VRAM). Use text-to-video instead."
     )
 
 
@@ -655,89 +272,24 @@ def generate_text_to_video(
 ) -> Path:
     """Generate a video from a TEXT prompt.
 
-    Prefers the real LTX-2 engine (``ltx_pipelines``/``ltx-core``) when installed
-    and a CUDA GPU is present.  Otherwise falls back to the **diffusers**
-    ``Lightricks/LTX-Video`` text-to-video pipeline, which needs only torch +
-    diffusers (already deployed on the GPU container) -- so text-to-video works
-    even on images/containers that never installed the LTX-2 python stack.
+    Generates a video from TEXT only, using Wan2.1 T2V-1.3B (the sole backend
+    in this Wan-only build).
 
     Returns the path to the generated MP4 file.
     """
     num_frames = compute_t2v_frames(duration_seconds, int(fps))
 
-    # Prefer the real LTX-2 engine when its packages + GPU are available
-    # (skipped when AI_MODEL is wan or hunyuan, which use dedicated paths below).
-    try:
-        from app.services import ltx2_engine
-
-        if ltx2_engine.ltx2_available() and settings.AI_MODEL not in ("wan", "hunyuan"):
-            logger.info("Using LTX-2 DistilledPipeline for text-to-video ...")
-            engine = ltx2_engine.LTX2Engine.from_settings()
-            nf = ltx2_engine.compute_num_frames(duration_seconds, int(fps))
-            out = engine.generate_text_to_video(
-                prompt=prompt,
-                output_path=str(output_path),
-                width=width,
-                height=height,
-                duration_seconds=duration_seconds,
-                num_frames=nf,
-                frame_rate=fps,
-                seed=seed,
-            )
-            return Path(out)
-    except ImportError:
-        pass  # ltx2 stack not installed -> fall through to diffusers
-    except Exception:
-        logger.warning(
-            "LTX-2 text-to-video unavailable; falling back to diffusers LTX.",
-            exc_info=True,
-        )
-
-    # Wan2.1 (diffusers Wan2.1 pipeline via DiffusionPipeline) -- closest LOCAL
-    # model to Google Veo on a 16 GB GPU (Wan2.1-1.3B, native 720p, strong motion
-    # coherence).  Enable with
-    #   AI_MODEL=wan  +  AI_LTX_MODEL_ID=Wan-AI/Wan2.1-T2V-1.3B-Diffusers
-    # (gated weights + diffusers >= 0.33, which ships WanPipeline).  Any failure is logged and the job is
-    # marked FAILED (no silent LTX fallback) so Wan output stays attributable.
-    if settings.AI_MODEL == "wan":
-        try:
-            logger.info("Using Wan2.1 T2V for text-to-video ...")
-            frames, w, h = _generate_text_with_wan(prompt, num_frames, width, height)
-            return write_frames_video(frames, output_path, fps=fps, width=w, height=h)
-        except Exception:
-            # A selected "wan" job must be attributable to Wan2.1: NEVER silently
-            # fall back to LTX. Masking a Wan failure as an LTX clip makes it
-            # impossible to tell which model produced a bad result. Re-raise so the
-            # worker marks the job FAILED with the Wan traceback in job.error
-            # (visible via GET /api/video/status/{job_id}).
-            logger.error("Wan2.1 generation failed; marking job as failed.", exc_info=True)
-            raise
-
-    # HunyuanVideo (diffusers HunyuanVideoPipeline, 16 GB-friendly with CPU
-    # offload + VAE tiling). Enable with  AI_MODEL=hunyuan
-    #   +  AI_HUNYUAN_MODEL_ID=hunyuanvideo-community/HunyuanVideo
-    # Any failure is logged and the job is marked FAILED (no silent fallback).
-    if settings.AI_MODEL == "hunyuan":
-        if not ai_available():
-            raise RuntimeError(
-                "diffusers+torch are not installed; cannot run HunyuanVideo"
-            )
-        logger.info("Using HunyuanVideo for text-to-video ...")
-        try:
-            frames, w, h = _generate_text_with_hunyuan(prompt, num_frames, width, height)
-            return write_frames_video(frames, output_path, fps=fps, width=w, height=h)
-        except Exception:
-            logger.error("HunyuanVideo generation failed; marking job as failed.", exc_info=True)
-            raise
-
-    # diffusers path (no ltx-core/ltx-pipelines required).
     if not ai_available():
-        raise RuntimeError(
-            "No text-to-video backend available: neither LTX-2 (ltx_pipelines) "
-            "nor diffusers+torch are installed."
-        )
-    frames, w, h = _generate_text_with_ltx(prompt, num_frames, width, height)
-    return write_frames_video(frames, output_path, fps=fps, width=w, height=h)
+        raise RuntimeError("No text-to-video backend: diffusers+torch missing.")
+    logger.info("Using Wan2.1 T2V (only backend in this Wan-only build) ...")
+    try:
+        frames, w, h = _generate_text_with_wan(prompt, num_frames, width, height)
+        return write_frames_video(frames, output_path, fps=fps, width=w, height=h)
+    except Exception:
+        logger.error("Wan2.1 generation failed; marking job as failed.", exc_info=True)
+        raise
+
+
 def _stitch_clips(clips, canvas_w, canvas_h, transition_duration, fps):
     """Crossfade a list of clips (each a list of PIL frames) into one sequence.
 
@@ -782,61 +334,12 @@ def _stitch_clips(clips, canvas_w, canvas_h, transition_duration, fps):
     return out
 
 
-def generate_image_sequence_video(
-    images, output_path, prompt="", fps=None, transition_duration=None
-):
-    """Animate every uploaded photo with LTX image-to-video and crossfade the
-    resulting clips into one continuous AI property tour.
-
-    Each photo is treated as its own living shot (like OpenArt image-to-video),
-    so every room comes alive with AI-generated camera motion.  Clips are
-    normalised to the configured canvas and stitched together.
-    """
-    if not images:
-        raise ValueError("At least one image is required")
-
-    canvas_w, canvas_h = settings.SLIDESHOW_WIDTH, settings.SLIDESHOW_HEIGHT
-    fps = fps or settings.AI_LTX_FPS
-    if transition_duration is None:
-        transition_duration = settings.SLIDESHOW_TRANSITION_DURATION
-    num_frames = settings.AI_LTX_NUM_FRAMES or None
-
-    clips = []
-    for name, data in images:
-        image = _pil_from_bytes(data)
-        logger.info("AI tour: animating photo '%s' ...", name)
-        frames, _, _ = _generate_with_ltx(image, prompt=prompt, num_frames=num_frames)
-        clips.append(frames)
-
-    frames_out = _stitch_clips(clips, canvas_w, canvas_h, transition_duration, fps)
-    logger.info(
-        "AI tour: %d shot(s) -> %d frames, %dx%d, %s",
-        len(clips), len(frames_out), canvas_w, canvas_h, output_path,
+def generate_image_sequence_video(*args, **kwargs):
+    """Disabled in the Wan-only build; caller falls back to Ken Burns slideshow."""
+    raise NotImplementedError(
+        "AI photo tours are disabled in this Wan-only build; the caller falls "
+        "back to the Ken Burns slideshow."
     )
-    return write_frames_video(
-        frames_out, output_path, fps=fps, width=canvas_w, height=canvas_h
-    )
-
-
-# Map a file extension to the FFmpeg container format name.
-_CONTAINER_FORMATS = {
-    ".mp4": "mp4",
-    ".mov": "mov",
-    ".m4v": "mp4",
-    ".webm": "webm",
-    ".mkv": "matroska",
-    ".avi": "avi",
-}
-
-# Map a file extension to the preferred encoder codec(s), best-first.
-_CODEC_PREFERENCES = {
-    ".mp4": ("libx264", "mpeg4"),
-    ".mov": ("libx264", "mpeg4"),
-    ".m4v": ("libx264", "mpeg4"),
-    ".webm": ("libvpx-vp9", "libvpx"),
-    ".mkv": ("libx264", "mpeg4"),
-    ".avi": ("mpeg4",),
-}
 
 
 def _select_encoder(ext: str) -> str:

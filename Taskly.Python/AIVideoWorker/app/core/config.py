@@ -55,9 +55,10 @@ class Settings:
     #   "svd" -> Stable Video Diffusion
     #   "wan" -> Wan2.1 T2V-1.3B (best local quality; ~11GB VRAM; use the
     #            Wan-AI/Wan2.1-T2V-1.3B-Diffusers repo; diffusers >= 0.33)
-    AI_MODEL: str = os.getenv("AI_MODEL", "ltx")
-    # LTX-Video model id (Lightricks/LTX-Video, ~2B params, bfloat16, fits 8GB+ GPUs).
-    AI_LTX_MODEL_ID: str = os.getenv("AI_LTX_MODEL_ID", "Lightricks/LTX-Video")
+    AI_MODEL: str = os.getenv("AI_MODEL", "wan")
+    # Diffusion model id. Wan-only build: Wan2.1 T2V 1.3B diffusers weights
+    # (~8 GB fp16 per the official repo; accepts license on HF).
+    AI_LTX_MODEL_ID: str = os.getenv("AI_LTX_MODEL_ID", "Wan-AI/Wan2.1-T2V-1.3B-Diffusers")
     AI_LTX_NUM_INFERENCE_STEPS: int = int(os.getenv("AI_LTX_NUM_INFERENCE_STEPS", "30"))
     AI_LTX_FPS: int = int(os.getenv("AI_LTX_FPS", "24"))
     # HunyuanVideo (diffusers, 16 GB-friendly): ~13B, bf16 transformer, runs on a

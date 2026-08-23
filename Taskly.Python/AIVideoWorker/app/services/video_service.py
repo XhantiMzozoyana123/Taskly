@@ -210,16 +210,23 @@ class VideoService:
         video_dir.mkdir(parents=True, exist_ok=True)
         video_path = video_dir / f"{job.job_id}.{settings.VIDEO_FORMAT}"
 
-        # Single image + AI -> synthesize motion with the configured model
-        # (LTX-Video by default; SVD when AI_MODEL=svd).
+        # Single image + AI -> animate with the configured model (Wan2.1 only;
+        # falls back to the slideshow because Wan I2V is 14B / too big for 16 GB).
         if len(job.images) == 1 and video_generator.ai_available():
             name, data = job.images[0]
-            logger.info(
-                "Animating image '%s' with %s ...", name, settings.AI_MODEL.upper()
-            )
-            return video_generator.generate_image_to_video(
-                data, video_path, prompt=job.prompt, model=settings.AI_MODEL
-            )
+            try:
+                logger.info(
+                    "Animating image '%s' with %s ...", name, settings.AI_MODEL.upper()
+                )
+                return video_generator.generate_image_to_video(
+                    data, video_path, prompt=job.prompt, model=settings.AI_MODEL
+                )
+            except NotImplementedError:
+                logger.warning(
+                    "Image-to-video unavailable in the %s-only build; "
+                    "falling back to Ken Burns slideshow.",
+                    settings.AI_MODEL,
+                )
 
         # Multiple photos + GPU + TOUR_STYLE=ai -> animate each photo with the AI
         # model (LTX image-to-video) and crossfade the shots into a living tour.

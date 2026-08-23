@@ -109,8 +109,8 @@ AI_SEED=42
 
 # --- AI model selection ---
 # ltx -> Lightricks LTX-Video (fast, OpenArt-style motion) | svd -> Stable Video Diffusion
-AI_MODEL=ltx
-AI_LTX_MODEL_ID=Lightricks/LTX-Video
+AI_MODEL=wan
+AI_LTX_MODEL_ID=Wan-AI/Wan2.1-T2V-1.3B-Diffusers
 AI_LTX_NUM_INFERENCE_STEPS=30
 AI_LTX_FPS=24
 AI_LTX_PROMPT=cinematic motion, smooth camera movement, high detail, 4k, ultra sharp
